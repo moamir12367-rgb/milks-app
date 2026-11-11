@@ -1,0 +1,529 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17 setup
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android project banao (index.html se)
+        run: |
+          set -e
+          # index.html dhoondo (app/src/main/assets ya repo ke root mein)
+          if [ -f app/src/main/assets/index.html ]; then cp app/src/main/assets/index.html /tmp/index.html
+          elif [ -f index.html ]; then cp index.html /tmp/index.html
+          else echo 'ERROR: index.html repo mein nahi mili'; exit 1; fi
+          mkdir -p .
+          cat > settings.gradle <<'EOF_FILE'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = 'MilkmanPRO'
+          include ':app'
+          EOF_FILE
+          mkdir -p .
+          cat > build.gradle <<'EOF_FILE'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          EOF_FILE
+          mkdir -p .
+          cat > gradle.properties <<'EOF_FILE'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.nonTransitiveRClass=true
+          EOF_FILE
+          mkdir -p app
+          cat > app/build.gradle <<'EOF_FILE'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.milkman.pro'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.milkman.pro'
+                  minSdk 29
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main
+          cat > app/src/main/AndroidManifest.xml <<'EOF_FILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.SEND_SMS" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+              <uses-permission android:name="android.permission.VIBRATE" />
+              <uses-feature android:name="android.hardware.telephony" android:required="false" />
+
+              <application
+                  android:allowBackup="true"
+                  android:icon="@drawable/ic_launcher"
+                  android:label="Milkman PRO"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <receiver android:name=".AlarmReceiver" android:exported="false" />
+
+                  <receiver android:name=".BootReceiver" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.BOOT_COMPLETED" />
+                          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                      </intent-filter>
+                  </receiver>
+              </application>
+          </manifest>
+          EOF_FILE
+          mkdir -p app/src/main/res/drawable
+          cat > app/src/main/res/drawable/ic_launcher.xml <<'EOF_FILE'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="96dp"
+              android:height="96dp"
+              android:viewportWidth="96"
+              android:viewportHeight="96">
+              <path android:fillColor="#009688" android:pathData="M0,0h96v96h-96z" />
+              <path android:fillColor="#FFFFFF" android:pathData="M48,20 C48,20 30,44 30,56 A18,18 0 0,0 66,56 C66,44 48,20 48,20 z" />
+          </vector>
+          EOF_FILE
+          mkdir -p app/src/main/res/drawable
+          cat > app/src/main/res/drawable/ic_notif.xml <<'EOF_FILE'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="96"
+              android:viewportHeight="96">
+              <path android:fillColor="#FFFFFF" android:pathData="M48,12 C48,12 24,44 24,60 A24,24 0 0,0 72,60 C72,44 48,12 48,12 z" />
+          </vector>
+          EOF_FILE
+          mkdir -p app/src/main/java/com/milkman/pro
+          cat > app/src/main/java/com/milkman/pro/Scheduler.java <<'EOF_FILE'
+          package com.milkman.pro;
+
+          import android.Manifest;
+          import android.app.AlarmManager;
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.content.pm.PackageManager;
+          import android.os.Build;
+
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+
+          import java.util.Calendar;
+
+          /** Reminders ko AlarmManager se schedule karta hai aur notification dikhata hai. */
+          public class Scheduler {
+              static final String CH = "milkman_reminders";
+
+              static void createChannel(Context c) {
+                  NotificationChannel ch = new NotificationChannel(CH, "Reminders", NotificationManager.IMPORTANCE_HIGH);
+                  c.getSystemService(NotificationManager.class).createNotificationChannel(ch);
+              }
+
+              static void notify(Context c, String title, String body) {
+                  if (Build.VERSION.SDK_INT >= 33
+                          && c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                      return;
+                  }
+                  createChannel(c);
+                  PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class),
+                          PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                  Notification n = new Notification.Builder(c, CH)
+                          .setSmallIcon(R.drawable.ic_notif)
+                          .setContentTitle(title == null ? "Milkman PRO" : title)
+                          .setContentText(body)
+                          .setStyle(new Notification.BigTextStyle().bigText(body))
+                          .setContentIntent(open)
+                          .setAutoCancel(true)
+                          .build();
+                  c.getSystemService(NotificationManager.class).notify((int) (System.currentTimeMillis() & 0x7fffffff), n);
+              }
+
+              static void scheduleAll(Context c) {
+                  SharedPreferences p = c.getSharedPreferences("m", Context.MODE_PRIVATE);
+                  AlarmManager am = c.getSystemService(AlarmManager.class);
+
+                  // purane alarms hatao
+                  String old = p.getString("codes", "");
+                  for (String s : old.split(",")) {
+                      if (s.isEmpty()) continue;
+                      PendingIntent pi = PendingIntent.getBroadcast(c, Integer.parseInt(s), new Intent(c, AlarmReceiver.class),
+                              PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+                      if (pi != null) { am.cancel(pi); pi.cancel(); }
+                  }
+
+                  StringBuilder codes = new StringBuilder();
+                  try {
+                      JSONArray arr = new JSONArray(p.getString("rem", "[]"));
+                      Calendar now = Calendar.getInstance();
+                      for (int i = 0; i < arr.length(); i++) {
+                          JSONObject r = arr.getJSONObject(i);
+                          if (!r.optBoolean("enabled", true)) continue;
+                          Calendar next = nextFire(r, now);
+                          if (next == null) continue;
+                          int code = r.optString("id", "r" + i).hashCode() & 0x7fffffff;
+                          String cust = r.optString("cust", "");
+                          String body = r.optString("label", "Reminder") + (cust.isEmpty() ? "" : " | Customer: " + cust);
+                          Intent in = new Intent(c, AlarmReceiver.class);
+                          in.putExtra("t", "Milkman PRO Reminder");
+                          in.putExtra("b", body);
+                          PendingIntent pi = PendingIntent.getBroadcast(c, code, in,
+                                  PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                          am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), pi);
+                          if (codes.length() > 0) codes.append(',');
+                          codes.append(code);
+                      }
+                  } catch (Exception ignored) { }
+                  p.edit().putString("codes", codes.toString()).apply();
+              }
+
+              /** index.html ke nextFire() jaisa hi logic. */
+              static Calendar nextFire(JSONObject r, Calendar now) {
+                  String[] hm = r.optString("time", "").split(":");
+                  if (hm.length < 2) return null;
+                  int h, m;
+                  try { h = Integer.parseInt(hm[0].trim()); m = Integer.parseInt(hm[1].trim()); } catch (Exception e) { return null; }
+                  String type = r.optString("type", "");
+                  for (int add = 0; add < 400; add++) {
+                      Calendar d = (Calendar) now.clone();
+                      d.add(Calendar.DAY_OF_YEAR, add);
+                      d.set(Calendar.HOUR_OF_DAY, h);
+                      d.set(Calendar.MINUTE, m);
+                      d.set(Calendar.SECOND, 0);
+                      d.set(Calendar.MILLISECOND, 0);
+                      if (!d.after(now)) continue;
+                      if (type.equals("bill")) {
+                          int day = Math.min(r.optInt("day", 1), d.getActualMaximum(Calendar.DAY_OF_MONTH));
+                          if (d.get(Calendar.DAY_OF_MONTH) != day) continue;
+                      }
+                      if (type.equals("custom") && "once".equals(r.optString("repeat", ""))) {
+                          String ymd = String.format("%04d-%02d-%02d", d.get(Calendar.YEAR), d.get(Calendar.MONTH) + 1, d.get(Calendar.DAY_OF_MONTH));
+                          if (!ymd.equals(r.optString("date", ""))) continue;
+                      }
+                      return d;
+                  }
+                  return null;
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main/java/com/milkman/pro
+          cat > app/src/main/java/com/milkman/pro/AlarmReceiver.java <<'EOF_FILE'
+          package com.milkman.pro;
+
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+
+          public class AlarmReceiver extends BroadcastReceiver {
+              @Override
+              public void onReceive(Context c, Intent i) {
+                  Scheduler.notify(c, i.getStringExtra("t"), i.getStringExtra("b"));
+                  Scheduler.scheduleAll(c); // agla alarm laga do
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main/java/com/milkman/pro
+          cat > app/src/main/java/com/milkman/pro/BootReceiver.java <<'EOF_FILE'
+          package com.milkman.pro;
+
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+
+          public class BootReceiver extends BroadcastReceiver {
+              @Override
+              public void onReceive(Context c, Intent i) {
+                  Scheduler.scheduleAll(c);
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main/java/com/milkman/pro
+          cat > app/src/main/java/com/milkman/pro/MainActivity.java <<'EOF_FILE'
+          package com.milkman.pro;
+
+          import android.Manifest;
+          import android.app.Activity;
+          import android.app.PendingIntent;
+          import android.content.BroadcastReceiver;
+          import android.content.ContentValues;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.IntentFilter;
+          import android.content.pm.PackageManager;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.provider.MediaStore;
+          import android.telephony.SmsManager;
+          import android.util.Base64;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Toast;
+
+          import org.json.JSONObject;
+
+          import java.io.OutputStream;
+          import java.util.ArrayList;
+
+          public class MainActivity extends Activity {
+              static final int REQ_FILE = 1, REQ_SMS = 2, REQ_NOTIF = 3;
+              WebView web;
+              ValueCallback<Uri[]> chooser;
+
+              @Override
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  Scheduler.createChannel(this);
+                  web = new WebView(this);
+                  setContentView(web);
+
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setAllowFileAccess(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+
+                  web.addJavascriptInterface(new Bridge(), "Android");
+                  web.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
+                          String u = r.getUrl().toString();
+                          if (u.startsWith("file:///android_asset/")) return false;
+                          try { startActivity(new Intent(Intent.ACTION_VIEW, r.getUrl())); } catch (Exception ignored) { }
+                          return true; // wa.me, http(s) wagairah bahar khulenge
+                      }
+                  });
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
+                          if (chooser != null) chooser.onReceiveValue(null);
+                          chooser = cb;
+                          try {
+                              startActivityForResult(p.createIntent(), REQ_FILE);
+                          } catch (Exception e) {
+                              chooser = null;
+                              return false;
+                          }
+                          return true;
+                      }
+                  });
+                  web.loadUrl("file:///android_asset/index.html");
+
+                  if (Build.VERSION.SDK_INT >= 33
+                          && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                      requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+                  }
+                  Scheduler.scheduleAll(this);
+              }
+
+              @Override
+              protected void onActivityResult(int req, int res, Intent data) {
+                  if (req == REQ_FILE && chooser != null) {
+                      chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, data));
+                      chooser = null;
+                  }
+                  super.onActivityResult(req, res, data);
+              }
+
+              @Override
+              public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
+                  if (req == REQ_SMS) {
+                      boolean ok = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+                      js("window.onSmsPermission && window.onSmsPermission(" + ok + ")");
+                  }
+              }
+
+              @Override
+              public void onBackPressed() {
+                  finish();
+              }
+
+              void js(String code) {
+                  runOnUiThread(() -> web.evaluateJavascript(code, null));
+              }
+
+              void toast(String m) {
+                  runOnUiThread(() -> Toast.makeText(this, m, Toast.LENGTH_LONG).show());
+              }
+
+              Uri saveMedia(String b64, String name, String mime, boolean image) throws Exception {
+                  byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                  ContentValues v = new ContentValues();
+                  v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                  v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                  Uri coll;
+                  if (image) {
+                      v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/MilkmanPRO");
+                      coll = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                  } else {
+                      v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                      coll = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                  }
+                  Uri u = getContentResolver().insert(coll, v);
+                  if (u == null) throw new Exception("insert failed");
+                  try (OutputStream o = getContentResolver().openOutputStream(u)) {
+                      o.write(data);
+                  }
+                  return u;
+              }
+
+              class Bridge {
+                  @JavascriptInterface
+                  public void scheduleReminders(String json) {
+                      getSharedPreferences("m", MODE_PRIVATE).edit().putString("rem", json).apply();
+                      Scheduler.scheduleAll(MainActivity.this);
+                  }
+
+                  @JavascriptInterface
+                  public void showNotification(String title, String body) {
+                      Scheduler.notify(MainActivity.this, title, body);
+                  }
+
+                  @JavascriptInterface
+                  public void saveFile(String b64, String name, String mime) {
+                      try {
+                          saveMedia(b64, name, (mime == null || mime.isEmpty()) ? "application/octet-stream" : mime, false);
+                          toast("Saved in Downloads: " + name);
+                      } catch (Exception e) {
+                          toast("Save nahi hua: " + e.getMessage());
+                      }
+                  }
+
+                  @JavascriptInterface
+                  public void shareImage(String b64, String name, String caption) {
+                      try {
+                          String mime = name != null && name.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+                          Uri u = saveMedia(b64, name, mime, true);
+                          Intent i = new Intent(Intent.ACTION_SEND);
+                          i.setType(mime);
+                          i.putExtra(Intent.EXTRA_STREAM, u);
+                          if (caption != null && !caption.isEmpty()) i.putExtra(Intent.EXTRA_TEXT, caption);
+                          i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                          Intent ch = Intent.createChooser(i, "Share bill");
+                          ch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          startActivity(ch);
+                      } catch (Exception e) {
+                          toast("Share nahi hua: " + e.getMessage());
+                      }
+                  }
+
+                  @JavascriptInterface
+                  public boolean hasSmsPermission() {
+                      return checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED;
+                  }
+
+                  @JavascriptInterface
+                  public void requestSmsPermission() {
+                      runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.SEND_SMS}, REQ_SMS));
+                  }
+
+                  @JavascriptInterface
+                  public void sendSms(String number, String text, String reqId) {
+                      final String action = "com.milkman.pro.SMS_SENT." + System.nanoTime();
+                      final BroadcastReceiver rx = new BroadcastReceiver() {
+                          @Override
+                          public void onReceive(Context c, Intent i) {
+                              int code = getResultCode();
+                              try { unregisterReceiver(this); } catch (Exception ignored) { }
+                              js("window.onSmsSent && window.onSmsSent(" + JSONObject.quote(reqId) + ","
+                                      + (code == Activity.RESULT_OK) + "," + code + ")");
+                          }
+                      };
+                      try {
+                          IntentFilter f = new IntentFilter(action);
+                          if (Build.VERSION.SDK_INT >= 33) registerReceiver(rx, f, Context.RECEIVER_NOT_EXPORTED);
+                          else registerReceiver(rx, f);
+                          Intent in = new Intent(action).setPackage(getPackageName());
+                          PendingIntent pi = PendingIntent.getBroadcast(MainActivity.this, 0, in,
+                                  PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                          SmsManager sm = Build.VERSION.SDK_INT >= 31
+                                  ? getSystemService(SmsManager.class) : SmsManager.getDefault();
+                          ArrayList<String> parts = sm.divideMessage(text);
+                          ArrayList<PendingIntent> sent = new ArrayList<>();
+                          for (int k = 0; k < parts.size(); k++) sent.add(pi);
+                          sm.sendMultipartTextMessage(number, null, parts, sent, null);
+                      } catch (Exception e) {
+                          try { unregisterReceiver(rx); } catch (Exception ignored) { }
+                          js("window.onSmsSent && window.onSmsSent(" + JSONObject.quote(reqId) + ",false,-1)");
+                      }
+                  }
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main/assets && cp /tmp/index.html app/src/main/assets/index.html
+
+      - name: Gradle setup
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Debug APK banao
+        run: gradle assembleDebug --no-daemon
+
+      - name: APK upload karo
+        uses: actions/upload-artifact@v4
+        with:
+          name: MilkmanPRO-APK
+          path: app/build/outputs/apk/debug/*.apk
