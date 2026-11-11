@@ -1,0 +1,2205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Milkman PRO - All in One</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1b2340">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- Libraries (internet chahiye PDF / bill image ke liye) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{--primary:#009688;--bg:#f4f7f6;--white:#fff;--text:#333}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+body{background:var(--bg);color:var(--text);padding-bottom:80px}
+.container{max-width:800px;margin:auto;padding:15px}
+.glass-card{background:var(--white);border-radius:15px;padding:20px;margin-bottom:20px;box-shadow:0 8px 20px rgba(0,0,0,.05)}
+.btn{padding:12px;border:none;border-radius:10px;cursor:pointer;font-weight:600;width:100%;display:flex;align-items:center;gap:8px;justify-content:center;color:#fff;margin-top:10px}
+.btn-primary{background:var(--primary)}
+.btn-gallery{background:#FF9800}
+.btn-wa{background:#25D366}
+.btn-pdf{background:#2196F3}
+input,select{width:100%;padding:12px;margin:8px 0;border-radius:10px;border:1px solid #ddd;background:#fff}
+.row{display:flex;gap:10px}
+
+.bottom-nav{position:fixed;bottom:0;width:100%;background:#fff;display:flex;justify-content:space-around;padding:12px 0;box-shadow:0 -2px 15px rgba(0,0,0,.1);z-index:1000}
+.nav-item{text-align:center;font-size:10px;color:#777;cursor:pointer;flex:1}
+.nav-item.active{color:var(--primary);font-weight:600}
+.nav-item i{font-size:18px;display:block}
+
+.view{display:none}
+.view.active{display:block;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.list-row{padding:10px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.list-row small{color:#777}
+.icon-btn{color:red;border:none;background:none;cursor:pointer}
+
+table.simple{width:100%;text-align:center;border-collapse:collapse}
+table.simple th{background:var(--primary);color:#fff;padding:8px}
+table.simple td{border-bottom:1px solid #eee;padding:5px}
+
+.gallery-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gallery-item{background:#fff;padding:8px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.1);position:relative;border:1px solid #eee}
+.gallery-item img{width:100%;border-radius:8px;height:180px;object-fit:cover;cursor:zoom-in}
+.del-btn{position:absolute;top:0;right:0;background:#ff4444;color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;transform:translate(30%,-30%);z-index:10}
+
+#imgModal{display:none;position:fixed;z-index:2000;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);justify-content:center;align-items:center;overflow:auto;padding:20px}
+#modalImg{max-width:100%;border-radius:5px}
+.close-modal{position:fixed;top:20px;right:20px;color:#fff;font-size:30px;cursor:pointer;background:rgba(0,0,0,.5);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+
+/* A4 bill (hidden) */
+#export-container{position:absolute;left:-9999px;top:0}
+.ref-bill{width:210mm;min-height:297mm;background:#fff;padding:40px 50px;color:#000}
+.ref-header{display:flex;justify-content:space-between;border-bottom:2px solid var(--primary);padding-bottom:10px;margin-bottom:30px}
+.bill-content-split{display:flex;gap:20px}
+.bill-column{flex:1}
+.ref-table{width:100%;border-collapse:collapse;border:1px solid #eee}
+.ref-table th,.ref-table td{border:1px solid #eee;padding:8px;text-align:center}
+.ref-summary{text-align:right;margin-top:30px;font-size:18px;line-height:1.8}
+.grand-total-line{border-top:2px solid var(--primary);margin-top:10px;padding-top:10px;font-size:30px;font-weight:800;color:var(--primary);text-align:right}
+
+/* ===== v2: nav scroll, settings, alarms, toast ===== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}   /* Android Chrome text-boost band */
+.bottom-nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.nav-item{min-width:52px}
+.btn-sm{width:auto;padding:8px 14px;margin:0;font-size:13px}
+.btn-grey{background:#607D8B}
+.btn-red{background:#e53935}
+.btn-teal{background:#00796b}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn-row .btn{flex:1 1 140px}
+.sec-title{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sec-title i{color:var(--primary)}
+.hint{font-size:12px;color:#777;line-height:1.5;margin:4px 0}
+.warn-box{background:#fff8e1;border:1px solid #ffe082;color:#6d4c00;border-radius:10px;padding:10px;font-size:12px;line-height:1.5;margin:8px 0}
+.ok-box{background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;border-radius:10px;padding:10px;font-size:12px;line-height:1.5;margin:8px 0}
+.set-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.set-row:last-child{border-bottom:none}
+.set-row label{flex:1;font-size:14px}
+.set-row input[type=time],.set-row input[type=number],.set-row select{width:auto;min-width:110px;margin:0}
+.set-row input[type=range]{width:130px;margin:0;padding:0}
+.switch{position:relative;width:46px;height:26px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.slider{position:absolute;inset:0;background:#ccc;border-radius:26px;transition:.2s;cursor:pointer}
+.slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+.slider{background:var(--primary)}
+.switch input:checked+.slider:before{transform:translateX(20px)}
+.rem-item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #eee}
+.rem-item .info{flex:1;min-width:0}
+.rem-item .info b{display:block;font-size:14px}
+.rem-item .info small{color:#777;font-size:12px}
+.rem-time{font-weight:700;color:var(--primary);font-size:16px}
+.up-item{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px dashed #e5e5e5;font-size:13px}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;background:#e0f2f1;color:#00695c;font-weight:600}
+.badge.off{background:#eee;color:#888}
+.badge.bad{background:#ffebee;color:#c62828}
+#toast-box{max-height:45vh;overflow:hidden;position:fixed;top:12px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:480px;z-index:3000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{pointer-events:auto;background:#263238;color:#fff;border-left:5px solid var(--primary);border-radius:12px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:13px;line-height:1.5;animation:fadeIn .25s}
+.toast b{display:block;font-size:14px;margin-bottom:2px}
+.toast .t-actions{margin-top:8px;display:flex;gap:8px}
+.toast button{border:none;border-radius:8px;padding:6px 12px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff}
+.toast button.sec{background:#546e7a}
+#busy{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:4000;align-items:center;justify-content:center;color:#fff;font-weight:600;flex-direction:column;gap:10px}
+
+/* ===== v3: PREMIUM UI (navy + orange, rounded cards, floating pill nav) ===== */
+:root{--primary:#1b2340;--navy:#1b2340;--navy2:#2a3566;--accent:#ff7a3d;--bg:#eef0f7;--text:#1b2340;--muted:#7b829c;--field:#f3f4fa;--shadow:0 10px 30px rgba(27,35,64,.08)}
+body{background:var(--bg);color:var(--text);padding-bottom:110px}
+.container{padding:16px 14px}
+.app-head{background:linear-gradient(135deg,#1b2340,#2a3566);color:#fff;padding:20px 18px 30px;border-radius:0 0 30px 30px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 12px 30px rgba(27,35,64,.25)}
+.app-head .logo{width:42px;height:42px;border-radius:14px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.app-head .ttl{display:flex;align-items:center;gap:12px}
+.app-head h3{font-size:18px;font-weight:700;line-height:1.1}
+.app-head small{display:block;font-size:11px;opacity:.7;font-weight:400;margin-top:2px}
+.app-head #date-now{font-size:11px;background:rgba(255,255,255,.12);padding:6px 12px;border-radius:20px;white-space:nowrap}
+.glass-card{border-radius:24px;padding:20px;box-shadow:var(--shadow)}
+.glass-card h3{font-size:17px;font-weight:700;margin-bottom:4px}
+.btn{border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 6px 16px rgba(27,35,64,.12);transition:transform .1s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--navy)}
+.btn-gallery,.btn-accent{background:var(--accent)}
+.btn-pdf{background:#3b5bdb}
+.btn-teal{background:#2a9d8f}
+.btn-grey{background:#6b7390}
+.btn-wa{background:#25D366}
+input,select{background:var(--field);border:2px solid transparent;border-radius:14px;padding:13px 14px;font-size:14px;color:var(--text);outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:var(--accent);background:#fff}
+table.simple th{background:var(--navy);border-radius:0}
+table.simple th:first-child{border-radius:12px 0 0 12px}
+table.simple th:last-child{border-radius:0 12px 12px 0}
+table.simple td{border-bottom:1px solid #eceef6}
+.list-row{border-bottom:1px solid #eceef6;padding:12px 4px}
+.icon-btn{color:#e5484d}
+.gallery-item{border-radius:18px;border:none;box-shadow:var(--shadow)}
+.gallery-item img{border-radius:12px}
+.switch input:checked+.slider{background:var(--accent)}
+.rem-time{color:var(--accent)}
+.sec-title i{color:var(--accent)}
+.hint{color:var(--muted)}
+.set-row{border-bottom:1px solid #eceef6}
+.toast{background:var(--navy);border-left-color:var(--accent);border-radius:16px}
+.toast button{background:var(--accent)}
+.ref-header{border-bottom:2px solid var(--navy);padding-bottom:14px;margin-bottom:24px;align-items:flex-end}
+.ref-header h1{font-size:26px;letter-spacing:.5px;color:var(--navy)}
+.ref-header h2{font-size:20px;color:var(--navy)}
+.ref-header p{font-size:13px;color:#666}
+.ref-bill h3#v-name,.ref-bill #v-name{font-size:20px!important;color:var(--navy)}
+.ref-table th{background:var(--navy);color:#fff;font-size:12px;padding:6px;border-color:var(--navy)}
+.ref-table td{font-size:12px;padding:5px}
+.ref-table tbody tr:nth-child(even){background:#f6f7fb}
+.ref-summary{margin-top:22px;font-size:14px;line-height:1.9}
+.grand-total-line{display:flex;justify-content:space-between;align-items:center;background:var(--navy);color:#fff;border-top:none;border-radius:10px;margin-top:12px;padding:12px 18px;font-size:18px;font-weight:700;text-align:left}
+
+/* floating pill nav */
+.bottom-nav{left:10px;right:10px;bottom:10px;width:auto;background:var(--navy);border-radius:32px;padding:7px;gap:4px;justify-content:flex-start;box-shadow:0 14px 34px rgba(27,35,64,.4);scrollbar-width:none}
+.bottom-nav::-webkit-scrollbar{display:none}
+.nav-item{flex:1 0 auto;min-width:58px;color:#aab1cf;border-radius:24px;padding:8px 6px;font-size:10px;transition:background .15s,color .15s}
+.nav-item i{font-size:17px;margin-bottom:3px}
+.nav-item.active{background:var(--accent);color:#fff}
+
+/* dashboard */
+.hero{background:linear-gradient(135deg,#1b2340,#2f3b73);color:#fff;border-radius:26px;padding:22px;margin-bottom:16px;box-shadow:0 14px 32px rgba(27,35,64,.25);position:relative;overflow:hidden;cursor:pointer}
+.hero:after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,122,61,.25)}
+.hero-t{font-size:20px;font-weight:700}
+.hero-s{font-size:12px;opacity:.75;margin-top:2px}
+.hero-amt{margin-top:18px;position:relative;z-index:1}
+.hero-amt small{display:block;font-size:11px;opacity:.7}
+.hero-amt b{font-size:32px;font-weight:700;color:#ffb48a}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.tile{border-radius:22px;padding:14px 10px;text-align:center}
+.tile i{font-size:16px;opacity:.7}
+.tile h3{font-size:26px;margin:4px 0 0;font-weight:700}
+.tile p{font-size:11px;opacity:.75}
+.t-orange{background:#ffc78a}.t-blue{background:#bcd3ff}.t-lilac{background:#d9c9ff}
+.amt-due{color:var(--accent)}
+#ui-render{padding:0!important;overflow:hidden!important;border-radius:14px}
+.pv-inner{transform-origin:top left;box-shadow:none}
+
+/* bill <-> payment */
+.st-badge{display:inline-block;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.5px}
+.st-paid{background:#dcf5e4;color:#14803c}
+.st-partial{background:#ffe9d6;color:#c2570c}
+.st-unpaid{background:#ffe0e0;color:#c62828}
+.st-advance{background:#dde8ff;color:#2f55c4}
+.pay-box{display:none;background:var(--field);border-radius:20px;padding:14px;margin:12px 0}
+.pay-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;font-weight:600}
+.pay-box .row{align-items:center;margin-top:6px}
+.pay-box .row input{margin:0}
+.pay-box .btn-sm{white-space:nowrap}
+.bs-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid #eceef6}
+.bs-row:last-child{border-bottom:none}
+.bs-nums{font-size:12px;color:var(--muted);margin-top:2px}
+.bs-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.bs-side .btn-sm{padding:6px 12px;font-size:12px;margin:0}
+/* bill ke andar status (JPG/PDF mein bhi aata hai) */
+.v-pay{display:none;text-align:right;margin-top:14px;font-size:14px;line-height:1.7}
+.v-stamp{display:inline-block;border:3px solid;border-radius:8px;padding:2px 16px;font-size:20px;font-weight:800;letter-spacing:2px;transform:rotate(-4deg);margin-bottom:4px}
+.v-stamp.st-paid{color:#14803c;border-color:#14803c;background:#fff}
+.v-stamp.st-partial{color:#c2570c;border-color:#c2570c;background:#fff}
+.v-stamp.st-unpaid{color:#c62828;border-color:#c62828;background:#fff}
+.v-stamp.st-advance{color:#2f55c4;border-color:#2f55c4;background:#fff}
+
+/* ===== v3: top menu, profile, login ===== */
+.head-right{display:flex;align-items:center;gap:8px;position:relative;flex:none}
+.app-head .ttl{min-width:0}
+.menu-btn{background:rgba(255,255,255,.14);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;margin:0;width:38px}
+.top-menu{display:none;position:absolute;right:0;top:46px;background:#fff;color:#1b2340;border-radius:16px;box-shadow:0 14px 34px rgba(27,35,64,.3);min-width:190px;padding:6px;z-index:3500}
+.top-menu.open{display:block}
+.top-menu .mi{padding:12px 14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap}
+.top-menu .mi:active{background:#eef0f7}
+.top-menu .mi-out{color:#c62828;border-top:1px solid #eee;border-radius:0 0 12px 12px;margin-top:4px}
+.menu-backdrop{display:none;position:fixed;inset:0;z-index:3400}
+.menu-backdrop.open{display:block}
+.avatar{width:76px;height:76px;border-radius:50%;background:var(--accent,#ff7a3d);color:#fff;font-size:32px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+#auth{display:none;position:fixed;inset:0;z-index:3500;background:linear-gradient(160deg,#1b2340,#2a3566);overflow-y:auto;padding:20px 16px}
+body.locked #auth{display:block}
+body.locked .app-head,body.locked .container,body.locked .bottom-nav,body.locked .menu-backdrop{display:none!important}
+.auth-box{max-width:420px;margin:24px auto;background:#fff;color:#333;border-radius:24px;padding:24px 22px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.auth-logo{width:62px;height:62px;border-radius:20px;background:var(--accent,#ff7a3d);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 10px}
+.auth-box h2{text-align:center;font-size:21px;color:#1b2340}
+.auth-sub{text-align:center;font-size:13px;color:#777;margin:4px 0 6px;line-height:1.5}
+.auth-err{color:#c62828;font-size:13px;min-height:20px;margin:6px 0 2px;text-align:center;line-height:1.4}
+.auth-err.ok{color:#2e7d32}
+.auth-link{color:#00796b;font-size:13px;cursor:pointer;text-align:center;margin-top:14px;text-decoration:underline}
+.auth-label{font-size:12px;color:#777;margin-top:6px}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:46px}
+.pw-wrap .eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;padding:6px;margin-top:0}
+.auth-keep{display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0}
+.auth-keep input{width:auto;margin:0}
+</style>
+</head>
+<body class="locked">
+
+<nav class="app-head">
+  <div class="ttl"><div class="logo">🥛</div><div><h3>Milkman PRO</h3><small id="head-sub">Milk business manager</small></div></div>
+  <div class="head-right">
+    <p id="date-now"></p>
+    <button class="menu-btn" id="menu-btn" onclick="toggleMenu(event)" aria-label="Menu">&#8942;</button>
+    <div class="top-menu" id="top-menu">
+      <div class="mi" onclick="menuGo('profile')">&#128100; Profile</div>
+      <div class="mi" onclick="menuGo('gallery')">&#128344; History</div>
+      <div class="mi" onclick="menuGo('settings')">&#9881;&#65039; Settings</div>
+      <div class="mi mi-out" onclick="menuLogout()">&#128682; Logout</div>
+    </div>
+  </div>
+</nav>
+<div class="menu-backdrop" id="menu-backdrop" onclick="closeMenu()"></div>
+
+<div id="toast-box"></div>
+<div id="busy"><i class="fas fa-spinner fa-spin" style="font-size:28px"></i><span id="busy-text">Please wait...</span></div>
+
+<div id="imgModal">
+  <span class="close-modal" onclick="closeModal()">&times;</span>
+  <img id="modalImg" src="">
+</div>
+
+<div class="container">
+
+<!-- HOME -->
+<section id="dashboard" class="view active">
+  <div class="hero" onclick="switchView('payment')">
+    <div class="hero-t">Namaste! 👋</div>
+    <div class="hero-s">Milk ka poora hisaab ek hi jagah.</div>
+    <div class="hero-amt"><small>Total baaki payment</small><b id="dash-pend">₹0</b></div>
+  </div>
+  <div class="tiles">
+    <div class="tile t-orange"><i class="fas fa-users"></i><h3 id="stat-c">0</h3><p>Customers</p></div>
+    <div class="tile t-blue"><i class="fas fa-receipt"></i><h3 id="stat-g">0</h3><p>Bills</p></div>
+    <div class="tile t-lilac"><i class="fas fa-wallet"></i><h3 id="stat-p">0</h3><p>Payments</p></div>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-hourglass-half"></i><h3>Baaki Payments</h3></div>
+    <div id="dash-pend-list"></div>
+  </div>
+  <button class="btn btn-primary" onclick="switchView('entry')"><i class="fas fa-edit"></i> Daily Milk Entry</button>
+  <button class="btn btn-gallery" onclick="switchView('billing')"><i class="fas fa-receipt"></i> Generate Bill</button>
+</section>
+
+<!-- CUSTOMERS -->
+<section id="customers" class="view">
+  <div class="glass-card">
+    <h3>Add Customer</h3>
+    <input type="text" id="cn" placeholder="Customer Name">
+    <input type="number" id="cm" placeholder="Mobile Number (WhatsApp)">
+    <div class="row">
+      <input type="number" id="cr" placeholder="Cow Rate (₹/L)">
+      <input type="number" id="br" placeholder="Buff Rate (₹/L)">
+    </div>
+    <button class="btn btn-primary" onclick="addCust()">Save Customer</button>
+  </div>
+  <div id="cust-list" class="glass-card"></div>
+</section>
+
+<!-- ENTRY -->
+<section id="entry" class="view">
+  <div class="glass-card">
+    <h3>Daily Entry</h3>
+    <select id="e-cust" onchange="renderEntry()"></select>
+    <input type="month" id="e-month" onchange="renderEntry()">
+    <div id="entry-area" style="overflow-x:auto"></div>
+    <button class="btn btn-primary" onclick="saveEntry()">Save Records</button>
+  </div>
+</section>
+
+<!-- BILLING -->
+<section id="billing" class="view">
+  <div class="glass-card">
+    <h3>Generate Bill</h3>
+    <select id="b-cust" onchange="updatePrevHint()"></select>
+    <input type="month" id="b-month" onchange="updatePrevHint()">
+    <input type="number" id="b-prev" placeholder="Previous Due (₹)">
+    <p class="hint" id="prev-hint" style="display:none"></p>
+    <input type="number" id="b-adv" placeholder="Advance (₹)">
+    <button class="btn btn-primary" onclick="previewBill()">Create Preview</button>
+  </div>
+  <div id="bill-preview-box" class="glass-card" style="display:none">
+    <div id="summary-box" style="background:#f1f1f1;padding:10px;border-radius:10px;font-weight:600;margin-bottom:10px"></div>
+    <div id="pay-box" class="pay-box">
+      <div class="pay-top"><span id="pb-badge"></span><span id="pb-text"></span></div>
+      <p class="hint" id="pb-note"></p>
+      <div class="row">
+        <input type="number" id="pb-amt" placeholder="Payment mili (₹)">
+        <button class="btn btn-accent btn-sm" onclick="receivePayment(false)"><i class="fas fa-plus"></i> Payment Mili</button>
+      </div>
+      <button class="btn btn-teal btn-sm" style="margin-top:8px" onclick="receivePayment(true)"><i class="fas fa-check-circle"></i> Poora Paid</button>
+    </div>
+    <div id="ui-render" style="background:#fff;border:1px solid #ddd;padding:5px;overflow:auto"></div>
+    <button class="btn btn-wa" onclick="shareBillImage()"><i class="fab fa-whatsapp"></i> WhatsApp Image Share (JPG)</button>
+    <button class="btn btn-teal" onclick="downloadBillJPG()"><i class="fas fa-image"></i> Download JPG</button>
+    <button class="btn btn-wa" style="background:#128C7E" onclick="sendWhatsApp()"><i class="fas fa-comment-dots"></i> WhatsApp Text Only</button>
+    <button class="btn btn-gallery" onclick="saveToGallery()"><i class="fas fa-save"></i> Save to History</button>
+    <button class="btn btn-pdf" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+    <p class="hint" id="jpg-status"></p>
+  </div>
+</section>
+
+<!-- PAYMENT -->
+<section id="payment" class="view">
+  <div class="glass-card">
+    <h3>Payment Record</h3>
+    <select id="p-cust"></select>
+    <input type="month" id="p-month">
+    <div class="row">
+      <input type="number" id="p-adv" placeholder="Advance (₹)">
+      <input type="number" id="p-due" placeholder="Due (₹)">
+    </div>
+    <button class="btn btn-primary" onclick="addPayment()">➕ Add</button>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-file-invoice-dollar"></i><h3>Bill Status (month-wise)</h3></div>
+    <p class="hint">Bill banate hi uska due yahan jud jata hai. "+ Payment" se paisa milne par status apne aap Paid / Partial ho jata hai.</p>
+    <div id="bill-status-list"></div>
+  </div>
+  <div class="glass-card" style="overflow-x:auto">
+    <table class="simple" id="pay-table"></table>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section id="gallery" class="view">
+  <div class="glass-card">
+    <h3><i class="fas fa-history"></i> Bill History</h3>
+    <p id="memory-warning" style="color:red;font-size:11px;display:none">Storage Full! Purane bills delete karein.</p>
+    <div id="gallery-render" class="gallery-grid" style="margin-top:15px"></div>
+  </div>
+</section>
+
+<!-- ALARMS -->
+<section id="alarms" class="view">
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-bell"></i><h3>Upcoming Reminders</h3></div>
+    <div id="upcoming-list"></div>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-clock"></i><h3>My Reminders</h3></div>
+    <div id="rem-list"></div>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-plus-circle"></i><h3>Add Reminder</h3></div>
+    <select id="ar-type" onchange="arTypeChanged()">
+      <option value="entry">📝 Daily milk entry</option>
+      <option value="payment">💰 Pending payments</option>
+      <option value="bill">🧾 Bill reminder (monthly)</option>
+      <option value="custom">🔔 Custom reminder</option>
+    </select>
+    <input type="text" id="ar-label" placeholder="Reminder name (optional)">
+    <div class="set-row"><label>Time</label><input type="time" id="ar-time" value="18:00"></div>
+    <div class="set-row" id="ar-day-row" style="display:none"><label>Day of month</label><input type="number" id="ar-day" min="1" max="31" value="1"></div>
+    <div class="set-row" id="ar-cust-row" style="display:none"><label>Customer (optional)</label><select id="ar-cust"></select></div>
+    <div class="set-row" id="ar-rep-row" style="display:none"><label>Repeat</label>
+      <select id="ar-rep"><option value="daily">Every day</option><option value="once">Only once</option></select></div>
+    <div class="set-row" id="ar-date-row" style="display:none"><label>Date (for once)</label><input type="date" id="ar-date"></div>
+    <button class="btn btn-primary" onclick="addReminder()"><i class="fas fa-plus"></i> Add Reminder</button>
+  </div>
+</section>
+
+<!-- PROFILE -->
+<section id="profile" class="view">
+  <div class="glass-card" style="text-align:center">
+    <div class="avatar" id="pf-avatar">?</div>
+    <h3 id="pf-title">Profile</h3>
+    <p class="hint" id="pf-since"></p>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-user"></i><h3>Profile details</h3></div>
+    <input type="text" id="pf-name" placeholder="Aapka naam">
+    <input type="tel" id="pf-mobile" placeholder="Mobile number" inputmode="numeric">
+    <input type="text" id="pf-shop" placeholder="Dairy / shop ka naam (optional)">
+    <button class="btn btn-primary" onclick="saveProfile()"><i class="fas fa-save"></i> Save Profile</button>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-lock"></i><h3>Password badlo</h3></div>
+    <input type="password" id="pw-old" placeholder="Abhi ka password">
+    <input type="password" id="pw-new" placeholder="Naya password (kam se kam 4 akshar)">
+    <input type="password" id="pw-new2" placeholder="Naya password dobara">
+    <button class="btn btn-teal" onclick="changePassword()"><i class="fas fa-key"></i> Password badlo</button>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-shield-alt"></i><h3>Password bhool jaao to (recovery)</h3></div>
+    <p class="hint">Is sawal ka jawab yaad rakho. Login screen par \"Password bhool gaye?\" se isi se naya password banega.</p>
+    <select id="pq-q"></select>
+    <input type="text" id="pq-a" placeholder="Naya jawab">
+    <input type="password" id="pq-pw" placeholder="Abhi ka password (confirm ke liye)">
+    <button class="btn btn-grey" onclick="saveRecovery()"><i class="fas fa-check"></i> Recovery save karo</button>
+  </div>
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-sms"></i><h3>Login OTP (SMS)</h3></div>
+    <div class="set-row"><label>Har login par OTP maango</label><label class="switch"><input type="checkbox" id="pf-otp" onchange="setOtpOn(this.checked)"><span class="slider"></span></label></div>
+    <p class="hint" id="pf-otp-hint"></p>
+    <button class="btn btn-grey" onclick="testSms()"><i class="fas fa-paper-plane"></i> Test SMS bhejo</button>
+    <p class="hint">OTP is phone ki SIM se upar likhe mobile number par SMS hota hai (SMS charge lag sakta hai). Agar number isi phone ka hai to kai networks apne hi number par SMS deliver nahi karte, isliye pehle "Test SMS" try karo. Na aaye to Profile mein malik ka alag number daalo.</p>
+  </div>
+  <div class="glass-card">
+    <div class="set-row"><label>Is phone par login yaad rakho</label><label class="switch"><input type="checkbox" id="pf-remember" onchange="setRemember(this.checked)"><span class="slider"></span></label></div>
+    <p class="hint">OFF karne par app band karke dobara kholne par password poochhega.</p>
+    <button class="btn btn-red" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section id="settings" class="view">
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-bell"></i><h3>Notification Settings</h3></div>
+    <div class="set-row"><label>Notifications ON / OFF</label><label class="switch"><input type="checkbox" id="s-notif" onchange="saveSettingsFromUI()"><span class="slider"></span></label></div>
+    <div class="set-row"><label>Permission status</label><span id="perm-badge" class="badge">-</span></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="requestNotifPermission()"><i class="fas fa-unlock"></i> Allow Notifications</button>
+      <button class="btn btn-grey" onclick="testNotification()"><i class="fas fa-paper-plane"></i> Send Test</button>
+    </div>
+    <div id="notif-help" class="warn-box" style="display:none"></div>
+    <div class="set-row"><label>Daily milk entry time</label><input type="time" id="s-entry-time" onchange="saveSettingsFromUI()"></div>
+    <div class="set-row"><label>Pending payment time</label><input type="time" id="s-pay-time" onchange="saveSettingsFromUI()"></div>
+    <div class="set-row"><label>Bill reminder day / time</label><span><input type="number" id="s-bill-day" min="1" max="31" style="width:64px;min-width:0" onchange="saveSettingsFromUI()"> <input type="time" id="s-bill-time" onchange="saveSettingsFromUI()"></span></div>
+    <p class="hint">In teen reminders ka time yahan badalne se "Alarms" tab ki default reminders bhi badal jaati hain.</p>
+  </div>
+
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-volume-up"></i><h3>Sound &amp; Vibration</h3></div>
+    <div class="set-row"><label>Sound</label><label class="switch"><input type="checkbox" id="s-sound" onchange="saveSettingsFromUI()"><span class="slider"></span></label></div>
+    <div class="set-row"><label>Tone</label><select id="s-tone" onchange="saveSettingsFromUI()"><option value="bell">Bell</option><option value="beep">Beep</option><option value="chime">Chime</option></select></div>
+    <div class="set-row"><label>Volume</label><input type="range" id="s-vol" min="0.1" max="1" step="0.1" onchange="saveSettingsFromUI()"></div>
+    <div class="set-row"><label>Vibration</label><label class="switch"><input type="checkbox" id="s-vib" onchange="saveSettingsFromUI()"><span class="slider"></span></label></div>
+    <button class="btn btn-grey" onclick="playAlarmFeedback(true)"><i class="fas fa-play"></i> Test Sound &amp; Vibration</button>
+  </div>
+
+  <div class="glass-card">
+    <div class="sec-title"><i class="fab fa-whatsapp"></i><h3>WhatsApp Sharing</h3></div>
+    <div class="set-row"><label>Bill ke saath text caption bhejo</label><label class="switch"><input type="checkbox" id="s-caption" onchange="saveSettingsFromUI()"><span class="slider"></span></label></div>
+    <div class="set-row"><label>Share na chale to JPG auto-download</label><label class="switch"><input type="checkbox" id="s-fallback" onchange="saveSettingsFromUI()"><span class="slider"></span></label></div>
+    <p class="hint" id="share-support"></p>
+  </div>
+
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-image"></i><h3>JPG Image Quality</h3></div>
+    <div class="set-row"><label>Quality</label>
+      <select id="s-quality" onchange="saveSettingsFromUI()">
+        <option value="standard">Standard (chhoti file)</option>
+        <option value="high">High (recommended)</option>
+        <option value="max">Maximum (badi file)</option>
+      </select></div>
+    <p class="hint">High = A4 ka 2x resolution, JPG quality 92%.</p>
+  </div>
+
+  <div class="glass-card">
+    <div class="sec-title"><i class="fas fa-database"></i><h3>Saved Data</h3></div>
+    <p class="hint" id="data-info"></p>
+    <p class="hint">Aapka purana saara data (customers, entries, payments, history) alag jagah save hai aur settings se kabhi nahi badalta.</p>
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="exportBackup()"><i class="fas fa-download"></i> Backup Data</button>
+      <button class="btn btn-grey" onclick="document.getElementById('bk-file').click()"><i class="fas fa-upload"></i> Restore Data</button>
+    </div>
+    <input type="file" id="bk-file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
+    <p class="hint">Naya phone ya APK app lene se pehle "Backup Data" dabao, phir naye app mein "Restore Data" se data wapas laao.</p>
+  </div>
+
+  <div class="glass-card" id="cloud-sync-card">
+    <div class="sec-title"><i class="fas fa-cloud"></i><h3>Cloud Sync</h3></div>
+    <p class="hint">Do phones par ek hi data chalane ke liye. Customers, entries aur payments sync hote hain. Bill images (History) aur reminders sync nahi hote.</p>
+    <p class="hint" id="cs-status" style="font-weight:600">Sync band hai.</p>
+    <p class="hint"><b>Setup (ek baar):</b> console.firebase.google.com par project banao, phir Realtime Database &rarr; Create (test mode). Rules tab mein neeche wala text paste karke Publish karo. Phir Database URL yahan daalo.</p>
+    <textarea id="cs-rules" readonly rows="11" style="width:100%;font-family:monospace;font-size:12px;border:1px solid #ddd;border-radius:10px;padding:10px;background:#f6f7fb;color:#333;resize:none;margin:6px 0"></textarea>
+    <button class="btn btn-grey" onclick="csCopyRules()"><i class="fas fa-copy"></i> Rules copy karo</button>
+    <label class="hint" style="display:block;margin-top:12px">Database URL</label>
+    <input id="cs-url" type="url" placeholder="https://xxxx-default-rtdb.firebaseio.com" autocapitalize="off" autocomplete="off" spellcheck="false">
+    <label class="hint" style="display:block">Shop code (dusre phone par bhi yahi code daalo)</label>
+    <input id="cs-code" type="text" placeholder="Shop code" autocapitalize="characters" autocomplete="off" spellcheck="false">
+    <div class="btn-row">
+      <button class="btn btn-grey" onclick="csNewCode()"><i class="fas fa-key"></i> Naya code banao</button>
+      <button class="btn btn-teal" onclick="csConnect()"><i class="fas fa-cloud-upload-alt"></i> Save + Sync</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-grey" onclick="csSyncNow()"><i class="fas fa-sync"></i> Abhi Sync karo</button>
+      <button class="btn btn-grey" onclick="csStop()"><i class="fas fa-ban"></i> Sync band karo</button>
+    </div>
+    <p class="hint">Shop code hi aapke data ki chaabi hai, kisi ko mat batana.</p>
+  </div>
+</section>
+
+</div>
+
+<!-- HIDDEN A4 TEMPLATE -->
+<div id="export-container">
+  <div id="bill-template" class="ref-bill">
+    <div class="ref-header">
+      <div><h1>Milkman PRO</h1><p>Invoice / Bill</p></div>
+      <div style="text-align:right"><h2 id="v-month"></h2><p id="v-date"></p></div>
+    </div>
+    <div style="margin-bottom:20px">
+      <p><strong>Bill To:</strong></p>
+      <h3 id="v-name" style="font-size:28px"></h3>
+      <p id="v-mob"></p>
+    </div>
+    <div class="bill-content-split">
+      <div class="bill-column"><table class="ref-table"><thead><tr><th>Date</th><th>Cow</th><th>Buff</th></tr></thead><tbody id="v-body-1"></tbody></table></div>
+      <div class="bill-column"><table class="ref-table"><thead><tr><th>Date</th><th>Cow</th><th>Buff</th></tr></thead><tbody id="v-body-2"></tbody></table></div>
+    </div>
+    <div class="ref-summary">
+      <p>Cow Total: <span id="v-tc"></span> L × ₹<span id="v-rc"></span> = <strong>₹<span id="v-tc-amt"></span></strong></p>
+      <p>Buffalo Total: <span id="v-tb"></span> L × ₹<span id="v-rb"></span> = <strong>₹<span id="v-tb-amt"></span></strong></p>
+      <p id="row-pd" style="display:none">Prev. Due: ₹<span id="v-pd"></span></p>
+      <p id="row-ad" style="display:none">Advance: -₹<span id="v-ad"></span></p>
+      <div class="grand-total-line"><span>Total Amount</span><span>₹<span id="v-total"></span></span></div>
+      <div class="v-pay"><span class="v-stamp"></span><p class="v-recv"></p><p class="v-bal"></p></div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active" data-v="dashboard" onclick="switchView('dashboard')"><i class="fas fa-home"></i>Home</div>
+  <div class="nav-item" data-v="customers" onclick="switchView('customers')"><i class="fas fa-users"></i>Cust</div>
+  <div class="nav-item" data-v="entry" onclick="switchView('entry')"><i class="fas fa-edit"></i>Entry</div>
+  <div class="nav-item" data-v="billing" onclick="switchView('billing')"><i class="fas fa-receipt"></i>Bill</div>
+  <div class="nav-item" data-v="payment" onclick="switchView('payment')"><i class="fas fa-wallet"></i>Pay</div>
+  <div class="nav-item" data-v="alarms" onclick="switchView('alarms')"><i class="fas fa-bell"></i>Alarms</div>
+</div>
+
+<!-- LOGIN -->
+<div id="auth">
+  <div class="auth-box">
+    <div class="auth-logo">&#129371;</div>
+    <h2 id="au-title">Milkman PRO</h2>
+    <p class="auth-sub" id="au-sub"></p>
+    <div class="auth-err" id="au-err"></div>
+
+    <div class="auth-pane" data-mode="signup">
+      <input type="text" id="su-name" placeholder="Aapka naam">
+      <input type="tel" id="su-mobile" placeholder="Mobile number (OTP is par SMS se aayega)" inputmode="numeric">
+      <input type="text" id="su-shop" placeholder="Dairy / shop ka naam (optional)">
+      <div class="pw-wrap"><input type="password" id="su-pw" placeholder="Password (kam se kam 4 akshar)"><button class="eye" type="button" onclick="togglePw('su-pw')">&#128065;</button></div>
+      <input type="password" id="su-pw2" placeholder="Password dobara">
+      <div class="auth-label">Security question (password bhoolne par kaam aayega)</div>
+      <select id="su-q"></select>
+      <input type="text" id="su-a" placeholder="Jawab">
+      <button class="btn btn-primary" onclick="doSignup()">Account banao</button>
+    </div>
+
+    <div class="auth-pane" data-mode="login">
+      <div class="pw-wrap"><input type="password" id="au-pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"><button class="eye" type="button" onclick="togglePw('au-pw')">&#128065;</button></div>
+      <label class="auth-keep"><input type="checkbox" id="au-keep" checked> Is phone par login yaad rakho</label>
+      <button class="btn btn-primary" onclick="doLogin()">Login</button>
+      <div class="auth-link" onclick="showAuth('forgot')">Password bhool gaye?</div>
+    </div>
+
+    <div class="auth-pane" data-mode="otp">
+      <input type="tel" id="otp-code" placeholder="6 ank ka OTP" inputmode="numeric" maxlength="6" onkeydown="if(event.key==='Enter')doVerifyOtp()">
+      <button class="btn btn-primary" onclick="doVerifyOtp()">OTP verify karo</button>
+      <button class="btn btn-grey" id="otp-resend" onclick="resendOtp()">Dobara bhejo</button>
+      <div class="auth-link" onclick="showAuth('otpalt')">OTP nahi aaya? Security question se login</div>
+      <div class="auth-link" onclick="cancelOtp()">Wapas login par</div>
+    </div>
+
+    <div class="auth-pane" data-mode="otpalt">
+      <div class="auth-label" id="oa-q"></div>
+      <input type="text" id="oa-a" placeholder="Jawab" onkeydown="if(event.key==='Enter')doOtpAlt()">
+      <button class="btn btn-primary" onclick="doOtpAlt()">Login karo</button>
+      <div class="auth-link" onclick="showAuth('otp')">Wapas OTP par</div>
+    </div>
+
+    <div class="auth-pane" data-mode="forgot">
+      <div class="auth-label" id="fg-q"></div>
+      <input type="text" id="fg-a" placeholder="Jawab">
+      <input type="password" id="fg-pw" placeholder="Naya password (kam se kam 4 akshar)">
+      <input type="password" id="fg-pw2" placeholder="Naya password dobara">
+      <button class="btn btn-primary" onclick="doRecover()">Naya password set karo</button>
+      <div class="auth-link" onclick="showAuth('login')">Wapas login par</div>
+      <div class="auth-link" style="color:#c62828" onclick="showAuth('reset')">Jawab bhi yaad nahi?</div>
+    </div>
+
+    <div class="auth-pane" data-mode="reset">
+      <p class="hint" style="color:#c62828">Dhyan do: isse is app ka SAARA data (customers, entries, payments, history) delete ho jayega aur naya account banega. Agar Backup file hai to baad mein Restore kar sakte ho.</p>
+      <input type="text" id="rs-txt" placeholder="Confirm ke liye RESET likho">
+      <button class="btn btn-red" onclick="doReset()">Sab delete karke reset karo</button>
+      <div class="auth-link" onclick="showAuth('login')">Wapas login par</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let db = JSON.parse(localStorage.getItem('milk_v6')) || {};
+db.customers = db.customers || [];
+db.entry = db.entry || {};
+db.gallery = db.gallery || [];
+db.payments = db.payments || [];
+
+let lastBill = null;
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function saveDB(){
+  try{
+    localStorage.setItem('milk_v6', JSON.stringify(db));
+    updateStats();
+    return true;
+  }catch(e){
+    document.getElementById('memory-warning').style.display = 'block';
+    alert("Storage Full! Purane bills delete karein.");
+    return false;
+  }
+}
+
+function switchView(id){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.toggle('active', i.dataset.v === id));
+  if(['entry','billing','payment'].includes(id)) populateSelects();
+  if(id === 'customers') renderCusts();
+  if(id === 'payment') renderPayments();
+  if(id === 'gallery') renderGallery();
+  if(id === 'entry') renderEntry();
+  if(id === 'alarms') renderAlarms();
+  if(id === 'settings') renderSettings();
+  if(id === 'profile') renderProfile();
+  closeMenu();
+}
+
+function populateSelects(){
+  const h = db.customers.map((c,i) => `<option value="${i}">${esc(c.name)}</option>`).join('');
+  ['e-cust','b-cust','p-cust'].forEach(id => {
+    const el = document.getElementById(id);
+    const old = el.value;
+    el.innerHTML = h;
+    if(old && el.querySelector(`option[value="${old}"]`)) el.value = old;
+  });
+  updatePrevHint();
+}
+
+/* ---------- CUSTOMERS ---------- */
+function addCust(){
+  const n = document.getElementById('cn').value.trim();
+  if(!n){ alert("Customer ka naam likho"); return; }
+  db.customers.push({
+    name: n,
+    mob: document.getElementById('cm').value,
+    cr: document.getElementById('cr').value || 50,
+    br: document.getElementById('br').value || 60
+  });
+  saveDB(); renderCusts();
+  ['cn','cm','cr','br'].forEach(id => document.getElementById(id).value = '');
+}
+
+function renderCusts(){
+  const el = document.getElementById('cust-list');
+  if(!db.customers.length){ el.innerHTML = "<p>Abhi koi customer nahi hai.</p>"; return; }
+  el.innerHTML = db.customers.map((c,i) => `
+    <div class="list-row">
+      <div>${esc(c.name)}<br><small>${esc(c.mob || 'No mobile')} | 🐄 ₹${esc(c.cr)} | 🐃 ₹${esc(c.br)}</small></div>
+      <button class="icon-btn" onclick="delCust(${i})"><i class="fas fa-trash"></i></button>
+    </div>`).join('');
+}
+
+function delCust(i){
+  if(confirm("Customer delete karein?")){
+    db.customers.splice(i,1);
+    db.entry = {};       // index shift hone se purani entries galat jud jaati hain
+    db.payments = db.payments.filter(p => p.cust !== i).map(p => p.cust > i ? {...p, cust: p.cust-1} : p);
+    saveDB(); renderCusts();
+  }
+}
+
+/* ---------- ENTRY ---------- */
+function renderEntry(){
+  const cIdx = document.getElementById('e-cust').value;
+  const month = document.getElementById('e-month').value;
+  const area = document.getElementById('entry-area');
+  if(!month || cIdx === ''){ area.innerHTML = ''; return; }
+  const days = new Date(month.split('-')[0], month.split('-')[1], 0).getDate();
+  const saved = db.entry[`${cIdx}_${month}`] || {};
+  let h = '<table class="simple"><tr><th>Date</th><th>🐄 Cow</th><th>🐃 Buff</th></tr>';
+  for(let d=1; d<=days; d++){
+    h += `<tr><td>${d}</td>
+      <td><input type="number" step="0.1" class="i-c" data-d="${d}" value="${saved[d]?.c || ''}" style="width:70px"></td>
+      <td><input type="number" step="0.1" class="i-b" data-d="${d}" value="${saved[d]?.b || ''}" style="width:70px"></td></tr>`;
+  }
+  area.innerHTML = h + '</table>';
+}
+
+function saveEntry(){
+  const cIdx = document.getElementById('e-cust').value;
+  const month = document.getElementById('e-month').value;
+  if(!month || cIdx === ''){ alert("Customer aur month chuno"); return; }
+  const key = `${cIdx}_${month}`;
+  db.entry[key] = {};
+  const bs = document.querySelectorAll('.i-b');
+  document.querySelectorAll('.i-c').forEach((el,i) => {
+    db.entry[key][el.dataset.d] = { c: el.value, b: bs[i].value };
+  });
+  if(saveDB()) alert("Saved ✅");
+}
+
+/* ---------- BILL ---------- */
+function previewBill(){
+  const cIdx = document.getElementById('b-cust').value;
+  const month = document.getElementById('b-month').value;
+  const prev = parseFloat(document.getElementById('b-prev').value) || 0;
+  const adv = parseFloat(document.getElementById('b-adv').value) || 0;
+  if(cIdx === ''){ alert("Pehle customer add karo"); return; }
+  if(!month){ alert("Month chuno"); return; }
+
+  const cust = db.customers[cIdx];
+  const entries = db.entry[`${cIdx}_${month}`] || {};
+  const days = new Date(month.split('-')[0], month.split('-')[1], 0).getDate();
+
+  document.getElementById('v-name').innerText = cust.name;
+  document.getElementById('v-mob').innerText = cust.mob || '';
+  document.getElementById('v-month').innerText = month;
+  document.getElementById('v-date').innerText = new Date().toLocaleDateString('en-GB');
+
+  let tc=0, tb=0, b1='', b2='';
+  for(let d=1; d<=days; d++){
+    const c = parseFloat(entries[d]?.c) || 0;
+    const b = parseFloat(entries[d]?.b) || 0;
+    tc += c; tb += b;
+    const row = `<tr><td>${d}</td><td>${c}</td><td>${b}</td></tr>`;
+    if(d <= 15) b1 += row; else b2 += row;
+  }
+  document.getElementById('v-body-1').innerHTML = b1;
+  document.getElementById('v-body-2').innerHTML = b2;
+
+  const cAmt = tc * cust.cr, bAmt = tb * cust.br;
+  const total = cAmt + bAmt + prev - adv;
+
+  document.getElementById('v-tc').innerText = tc;
+  document.getElementById('v-rc').innerText = cust.cr;
+  document.getElementById('v-tc-amt').innerText = cAmt.toFixed(2);
+  document.getElementById('v-tb').innerText = tb;
+  document.getElementById('v-rb').innerText = cust.br;
+  document.getElementById('v-tb-amt').innerText = bAmt.toFixed(2);
+
+  document.getElementById('row-pd').style.display = prev > 0 ? 'block' : 'none';
+  document.getElementById('v-pd').innerText = prev;
+  document.getElementById('row-ad').style.display = adv > 0 ? 'block' : 'none';
+  document.getElementById('v-ad').innerText = adv;
+  document.getElementById('v-total').innerText = total.toFixed(2);
+
+  lastBill = { name: cust.name, mob: cust.mob, month, tc, tb, total: total.toFixed(2), cust: Number(cIdx) };
+  // v3: bill ka due Payment tab se jodo (dobara preview karne par wahi record update hota hai, duplicate nahi banta)
+  lastBill.link = (cAmt + bAmt) > 0 ? linkBillPayment(Number(cIdx), month, cAmt + bAmt, adv) : '';
+  if(lastBill.link === 'added' || lastBill.link === 'updated'){ saveDB(); renderPayments(); }
+  refreshBillStatus();     // template mein Paid/Unpaid stamp + upar wala payment box
+
+  document.getElementById('ui-render').innerHTML = '<div class="ref-bill pv-inner">' + document.getElementById('bill-template').innerHTML + '</div>';
+  // v2: preview copy ke duplicate id hatao, warna agla bill purane data se overwrite ho jata hai
+  document.querySelectorAll('#ui-render [id]').forEach(e => e.removeAttribute('id'));
+  document.getElementById('summary-box').innerHTML =
+    `👤 ${esc(cust.name)}<br>🐄 ${tc}L | 🐃 ${tb}L<br>💰 Total ₹ ${total.toFixed(2)}`;
+  document.getElementById('bill-preview-box').style.display = 'block';
+
+  fitBillPreview();
+  prepareBillImage();      // v2: JPG peeche se taiyaar hone lagti hai
+}
+// Preview A4 ki asli chaudai par banta hai, phir phone ki screen ke hisaab se chhota dikhaya jata hai
+function fitBillPreview(){
+  const box = document.getElementById('ui-render'), inn = box && box.querySelector('.pv-inner');
+  if(!inn) return;
+  inn.style.transform = 'none'; box.style.height = 'auto';
+  const sc = Math.min(1, box.clientWidth / inn.offsetWidth);
+  inn.style.transform = 'scale(' + sc + ')';
+  box.style.height = Math.ceil(inn.offsetHeight * sc) + 'px';
+}
+window.addEventListener('resize', () => { try{ fitBillPreview(); }catch(e){} });
+
+function sendWhatsApp(){
+  if(!lastBill){ alert("Pehle Create Preview dabao"); return; }
+  const text = captionText();
+  let phone = (lastBill.mob || '').replace(/\D/g,'');
+  if(phone.length === 10) phone = '91' + phone;
+  window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(text));
+}
+
+async function saveToGallery(){
+  try{
+    const canvas = await html2canvas(document.getElementById('bill-template'), { scale: 1.5 });
+    db.gallery.unshift({ id: Date.now(), name: document.getElementById('v-name').innerText, img: canvas.toDataURL('image/jpeg', 0.7),
+                         cust: lastBill ? lastBill.cust : undefined, month: lastBill ? lastBill.month : undefined });
+    if(saveDB()) alert("History mein save ho gaya ✅");
+  }catch(e){ alert("Bill image nahi ban paayi. Internet check karo."); }
+}
+
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  html2canvas(document.getElementById('bill-template'), { scale: 2 }).then(canvas => {
+    const pdf = new jsPDF('p','mm','a4');
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, (canvas.height * 210) / canvas.width);
+    pdf.save("MilkBill.pdf");
+  }).catch(() => alert("PDF nahi ban paayi. Internet check karo."));
+}
+
+/* ---------- PAYMENT ---------- */
+function addPayment(){
+  const cust = document.getElementById('p-cust').value;
+  const month = document.getElementById('p-month').value;
+  if(cust === '' || !month){ alert("Customer aur month chuno"); return; }
+  // v3: bill ka due pehle se jud chuka ho to dobara due likhne par double ginti na ho
+  const dueNow = parseFloat(document.getElementById('p-due').value) || 0;
+  const linked = db.payments.find(p => p.bill && p.cust === Number(cust) && p.month === month);
+  if(dueNow > 0 && linked && !confirm("Is month ka bill pehle se Payment mein jud chuka hai (due ₹" + linked.due + "). Phir bhi ye Due alag se jodna hai? (Paisa mila ho to sirf Advance mein likho)")) return;
+  db.payments.push({
+    cust: Number(cust),
+    month,
+    adv: document.getElementById('p-adv').value || 0,
+    due: document.getElementById('p-due').value || 0
+  });
+  saveDB(); renderPayments();
+  document.getElementById('p-adv').value = '';
+  document.getElementById('p-due').value = '';
+}
+
+function renderPayments(){
+  let h = '<tr><th>Customer</th><th>Month</th><th>Advance</th><th>Due</th><th></th></tr>';
+  db.payments.forEach((p,i) => {
+    h += `<tr><td>${esc(db.customers[p.cust]?.name || '-')}</td><td>${esc(p.month)}</td><td>₹${esc(p.adv)}</td><td>₹${esc(p.due)}</td>
+      <td><button class="icon-btn" onclick="delPayment(${i})"><i class="fas fa-trash"></i></button></td></tr>`;
+  });
+  document.getElementById('pay-table').innerHTML = h;
+  renderBillStatusList();
+}
+
+function delPayment(i){
+  if(confirm("Ye record delete karein?")){ db.payments.splice(i,1); saveDB(); renderPayments(); refreshBillStatus(); }
+}
+
+/* =====================================================================
+   v3: BILL <-> PAYMENT (dono jude hue)
+   - Bill banate hi uska due Payment tab mein jud jata hai (record par bill:true)
+   - Payment milne par bill ka status Paid / Partial / Unpaid apne aap badalta hai
+   - Status bill ki JPG, PDF, WhatsApp caption, History aur Home ke "Baaki" mein dikhta hai
+   Purane payment records (adv / due) jaise the waise hi chalte hain.
+   ===================================================================== */
+const byId = id => document.getElementById(id);
+const num = v => parseFloat(v) || 0;
+const r2 = v => Math.round(v * 100) / 100;
+const ST_TXT = { paid:'PAID', partial:'PARTIAL', unpaid:'UNPAID', advance:'ADVANCE', none:'' };
+
+function stBadge(st){ return (!st || st === 'none') ? '' : '<span class="st-badge st-' + st + '">' + ST_TXT[st] + '</span>'; }
+function payStatus(due, paid){
+  if(due > 0.005 && paid >= due - 0.005) return 'paid';
+  if(due > 0.005 && paid > 0.005) return 'partial';
+  if(due > 0.005) return 'unpaid';
+  if(paid > 0.005) return 'advance';
+  return 'none';
+}
+
+// Bill ka due Payment mein jodta hai. Return: 'added' | 'updated' | 'manual' (is month ka due pehle se manually likha hai)
+function linkBillPayment(cust, month, due, adv){
+  const rec = db.payments.find(p => p.bill && p.cust === cust && p.month === month);
+  if(rec){ rec.due = r2(due); rec.adv = r2(adv); return 'updated'; }
+  if(db.payments.some(p => !p.bill && p.cust === cust && p.month === month && num(p.due) > 0)) return 'manual';
+  db.payments.push({ cust, month, adv: r2(adv), due: r2(due), bill: true });
+  return 'added';
+}
+// Is customer+month ke liye bill ke baad mile paise (bill wale record ke alawa)
+function extraPaid(cust, month){
+  let s = 0;
+  db.payments.forEach(p => { if(p.cust === cust && p.month === month && !p.bill) s += num(p.adv); });
+  return s;
+}
+function billState(){
+  if(!lastBill || typeof lastBill.cust !== 'number') return null;
+  const total = num(lastBill.total), recv = extraPaid(lastBill.cust, lastBill.month);
+  const bal = Math.max(0, r2(total - recv));
+  let st = 'none';
+  if(total > 0.005) st = recv >= total - 0.005 ? 'paid' : (recv > 0.005 ? 'partial' : 'unpaid');
+  else if(recv > 0.005) st = 'advance';
+  return { total, recv, bal, st };
+}
+
+function refreshBillStatus(){
+  const box = byId('pay-box'); if(!box) return;
+  const s = billState();
+  if(!s){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  byId('pb-badge').innerHTML = stBadge(s.st);
+  byId('pb-text').textContent = 'Total ₹' + s.total.toFixed(2) + ' | Mila ₹' + s.recv.toFixed(2) + ' | Baaki ₹' + s.bal.toFixed(2);
+  const notes = {
+    added:   'Is bill ka due Payment tab mein jud gaya.',
+    updated: 'Payment tab ka is bill wala due update ho gaya.',
+    manual:  'Is month ka due Payment tab mein pehle se likha hai, isliye dobara nahi joda.'
+  };
+  byId('pb-note').textContent = notes[lastBill.link] || '';
+  document.querySelectorAll('.v-pay').forEach(el => {
+    el.style.display = s.st === 'none' ? 'none' : 'block';
+    const stamp = el.querySelector('.v-stamp');
+    stamp.textContent = ST_TXT[s.st]; stamp.className = 'v-stamp st-' + s.st;
+    el.querySelector('.v-recv').textContent = s.recv > 0 ? 'Received: ₹' + s.recv.toFixed(2) : '';
+    el.querySelector('.v-bal').textContent = s.bal > 0 ? 'Balance: ₹' + s.bal.toFixed(2) : '';
+  });
+  // preview wale bill ki copy bhi (ids hata kar bani thi, isliye class se) -- upar ki loop dono ko cover karti hai
+}
+
+function afterPaymentChange(){
+  saveDB(); renderPayments(); refreshBillStatus();
+  if(lastBill && byId('bill-preview-box').style.display !== 'none') prepareBillImage();   // naya status JPG mein bhi aaye
+}
+
+function receivePayment(full){
+  const s = billState();
+  if(!s){ toast('Pehle bill preview banao', '"Create Preview" dabao.'); return; }
+  const amt = full ? s.bal : num(byId('pb-amt').value);
+  if(amt <= 0){ toast(full ? 'Kuch baaki nahi' : 'Amount likho', full ? 'Is bill ka poora paisa mil chuka hai.' : '"Payment mili" wala amount daalo.'); return; }
+  db.payments.push({ cust: lastBill.cust, month: lastBill.month, adv: r2(amt), due: 0, date: ymd(new Date()) });
+  byId('pb-amt').value = '';
+  afterPaymentChange();
+  toast('Payment save ho gayi ✅', lastBill.name + ': ₹' + amt.toFixed(2) + ' mila.');
+}
+
+// Payment tab ke Bill Status list se
+function quickPay(cust, month){
+  const v = prompt('Kitna payment mila? (₹)');
+  const amt = num(v);
+  if(!(amt > 0)) return;
+  db.payments.push({ cust, month, adv: r2(amt), due: 0, date: ymd(new Date()) });
+  afterPaymentChange();
+}
+
+// Har customer ke mahine-wise due; mile hue paise sabse purane mahine se chukte hain (FIFO).
+// Isse "naye bill mein pichhla baaki shamil tha aur chuka diya" wala case sahi dikhta hai.
+function monthStates(){
+  const per = {};
+  db.payments.forEach(p => {
+    if(!db.customers[p.cust]) return;
+    const c = per[p.cust] || (per[p.cust] = { paid: 0, m: {} });
+    const m = c.m[p.month] || (c.m[p.month] = { cust: p.cust, month: p.month, due: 0 });
+    m.due += num(p.due); c.paid += num(p.adv);
+  });
+  const out = [];
+  Object.keys(per).forEach(k => {
+    let pool = per[k].paid;
+    const rows = Object.values(per[k].m).sort((a,b) => String(a.month).localeCompare(String(b.month)));
+    rows.forEach(r => {
+      r.got = Math.min(pool, r.due); pool -= r.got;
+      r.bal = Math.max(0, r.due - r.got); r.extra = 0;
+      r.st = payStatus(r.due, r.got);
+    });
+    if(pool > 0.005 && rows.length){ const last = rows[rows.length - 1]; last.extra = pool; if(last.bal <= 0.005) last.st = last.due > 0.005 ? 'paid' : 'advance'; }
+    out.push.apply(out, rows);
+  });
+  return out;
+}
+
+function renderBillStatusList(){
+  const el = byId('bill-status-list'); if(!el) return;
+  const rows = monthStates().sort((a,b) => String(b.month).localeCompare(String(a.month)) || a.cust - b.cust);
+  if(!rows.length){ el.innerHTML = '<p class="hint">Abhi koi bill / payment record nahi hai.</p>'; return; }
+  el.innerHTML = rows.map(x =>
+    '<div class="bs-row"><div><b>' + esc(db.customers[x.cust].name) + '</b> <small>' + esc(x.month) + '</small>' +
+    '<div class="bs-nums">Due ₹' + Math.round(x.due) + ' · Mila ₹' + Math.round(x.got) + ' · Baaki ₹' + Math.round(x.bal) +
+    (x.extra > 0.005 ? ' · Advance ₹' + Math.round(x.extra) : '') + '</div></div>' +
+    '<div class="bs-side">' + stBadge(x.st) +
+    (x.bal > 0.005 ? '<button class="btn btn-accent btn-sm" onclick="quickPay(' + x.cust + ',\'' + esc(x.month) + '\')">+ Payment</button>' : '') +
+    '</div></div>').join('');
+}
+
+function galleryBadge(b){
+  if(typeof b.cust !== 'number' || !b.month) return '';
+  const r = monthStates().find(x => x.cust === b.cust && x.month === b.month);
+  return r ? stBadge(r.st) : '';
+}
+
+// Bill banate samay: pichhle mahino ka baaki dikhao (button se Previous Due mein daal sakte ho)
+function updatePrevHint(){
+  const h = byId('prev-hint'); if(!h) return;
+  const c = byId('b-cust').value, m = byId('b-month').value;
+  if(c === '' || !m){ h.style.display = 'none'; return; }
+  let bal = 0;
+  db.payments.forEach(p => { if(p.cust === Number(c) && p.month !== m) bal += num(p.due) - num(p.adv); });
+  if(bal <= 0.5){ h.style.display = 'none'; return; }
+  h.style.display = 'block';
+  h.innerHTML = 'Pichhle mahino ka baaki: <b>₹' + Math.round(bal) + '</b> <button class="btn btn-accent btn-sm" style="display:inline-flex;width:auto;margin:0 0 0 6px;padding:4px 10px;font-size:12px" onclick="byId(\'b-prev\').value=' + Math.round(bal) + '">Previous Due mein daalo</button>';
+}
+
+function renderDash(){
+  const list = byId('dash-pend-list'); if(!list) return;
+  const d = pendingDues().sort((a,b) => b.amt - a.amt);
+  const tot = d.reduce((a,x) => a + x.amt, 0);
+  byId('dash-pend').textContent = '₹' + Math.round(tot).toLocaleString('en-IN');
+  list.innerHTML = d.length
+    ? d.slice(0,5).map(x => '<div class="list-row"><span>' + esc(x.name) + '</span><b class="amt-due">₹' + Math.round(x.amt).toLocaleString('en-IN') + '</b></div>').join('') +
+      (d.length > 5 ? '<p class="hint">+' + (d.length - 5) + ' aur customers ka baaki Payment tab mein hai.</p>' : '')
+    : '<p class="hint">Koi baaki payment nahi 🎉</p>';
+}
+
+/* ---------- HISTORY ---------- */
+function renderGallery(){
+  const c = document.getElementById('gallery-render');
+  if(!db.gallery.length){ c.innerHTML = "<p>Abhi koi history nahi hai.</p>"; return; }
+  c.innerHTML = db.gallery.map((b,i) => `
+    <div class="gallery-item">
+      <button class="del-btn" onclick="delBill(${i})">&times;</button>
+      <img src="${b.img}" onclick="openModal(${i})">
+      <p style="font-size:11px;text-align:center;margin-top:5px">${esc(b.name)}${b.month ? ' · ' + esc(b.month) : ''}</p>
+      <div style="text-align:center;margin-top:4px">${galleryBadge(b)}</div>
+    </div>`).join('');
+}
+function openModal(i){
+  document.getElementById('modalImg').src = db.gallery[i].img;
+  document.getElementById('imgModal').style.display = 'flex';
+}
+function closeModal(){ document.getElementById('imgModal').style.display = 'none'; }
+function delBill(i){ if(confirm("Ye bill history se delete karein?")){ db.gallery.splice(i,1); saveDB(); renderGallery(); } }
+
+/* =====================================================================
+   v2 PART A: Settings, toast, sound/vibration, notifications
+   (settings alag key 'milk_settings_v2' mein hain, purana 'milk_v6' data nahi chhedta)
+   ===================================================================== */
+const SET_KEY = 'milk_settings_v2';
+const ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#009688"/><text x="32" y="46" font-size="38" text-anchor="middle">🥛</text></svg>');
+
+function loadSettings(){
+  let s = {};
+  try{ s = JSON.parse(localStorage.getItem(SET_KEY)) || {}; }catch(e){ s = {}; }
+  const d = { notif:true, sound:true, tone:'bell', vol:0.8, vib:true, caption:true, fallback:true, quality:'high',
+              entryTime:'19:00', payTime:'10:00', billDay:1, billTime:'09:00' };
+  s = Object.assign(d, s);
+  if(!Array.isArray(s.reminders)){
+    s.reminders = [
+      { id:'r_entry', type:'entry',   label:'Daily milk entry',  time:s.entryTime, enabled:true, sys:true },
+      { id:'r_pay',   type:'payment', label:'Pending payments',  time:s.payTime,   enabled:true, sys:true },
+      { id:'r_bill',  type:'bill',    label:'Monthly bill',      time:s.billTime, day:s.billDay, enabled:true, sys:true }
+    ];
+  }
+  if(!s.fired || typeof s.fired !== 'object') s.fired = {};
+  return s;
+}
+let S = loadSettings();
+
+function saveSettings(){
+  try{ localStorage.setItem(SET_KEY, JSON.stringify(S)); return true; }
+  catch(e){ toast('Settings save nahi hui', 'Phone ki storage bhari ho sakti hai. Purane bills delete karke dekho.'); return false; }
+}
+
+const pad2 = n => String(n).padStart(2,'0');
+const ymd  = d => d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const ym   = d => d.getFullYear()+'-'+pad2(d.getMonth()+1);
+const dim  = (y,m) => new Date(y, m+1, 0).getDate();   // m = 0..11
+
+/* ---------- Toast (in-app banner) ---------- */
+function toast(title, body, opts){
+  opts = opts || {};
+  const box = document.getElementById('toast-box');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  const b = document.createElement('b'); b.textContent = title; t.appendChild(b);
+  if(body){ const p = document.createElement('span'); p.textContent = body; t.appendChild(p); }
+  const close = () => { if(t.parentNode) t.parentNode.removeChild(t); };
+  if(opts.actions){
+    const a = document.createElement('div'); a.className = 't-actions';
+    opts.actions.forEach(x => {
+      const bt = document.createElement('button');
+      bt.textContent = x.label; if(x.sec) bt.className = 'sec';
+      bt.onclick = () => { try{ x.fn && x.fn(); }catch(e){} close(); };
+      a.appendChild(bt);
+    });
+    t.appendChild(a);
+  }
+  box.appendChild(t);
+  while(box.children.length > 3) box.removeChild(box.firstChild);   // screen na dhak jaye
+  if(!opts.sticky) setTimeout(close, opts.ms || 4500);
+  return t;
+}
+
+/* ---------- Sound + vibration ---------- */
+let _ac = null;
+function getAC(){
+  if(!_ac){ const C = window.AudioContext || window.webkitAudioContext; if(C) _ac = new C(); }
+  return _ac;
+}
+document.addEventListener('click', () => {         // browser audio ko pehle tap par unlock karna padta hai
+  try{ const c = getAC(); if(c && c.state === 'suspended') c.resume(); }catch(e){}
+}, { once:false, passive:true });
+
+function playTone(){
+  const c = getAC(); if(!c) return;
+  if(c.state === 'suspended') c.resume().catch(()=>{});
+  const seqs = {
+    bell:  [[880,0,.55],[660,.35,.8]],
+    beep:  [[1000,0,.15],[1000,.25,.15],[1000,.5,.15]],
+    chime: [[523,0,.3],[659,.25,.3],[784,.5,.7]]
+  };
+  const gainMax = Math.max(.02, S.vol * (S.tone === 'beep' ? .25 : .7));
+  (seqs[S.tone] || seqs.bell).forEach(([f,t0,d]) => {
+    const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + t0;
+    o.type = S.tone === 'beep' ? 'square' : 'sine';
+    o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(gainMax, t + .02);
+    g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + d + .05);
+  });
+}
+
+function playAlarmFeedback(isTest){
+  let didSound = false, didVib = false;
+  if(S.sound){ try{ playTone(); didSound = true; }catch(e){} }
+  if(S.vib && navigator.vibrate){ try{ didVib = navigator.vibrate([300,150,300,150,500]); }catch(e){} }
+  if(isTest){
+    const msg = [];
+    if(!S.sound) msg.push('Sound OFF hai.');
+    if(S.vib && !navigator.vibrate) msg.push('Is browser/device par vibration supported nahi.');
+    if(!S.vib) msg.push('Vibration OFF hai.');
+    if(didSound || didVib) toast('Test chal raha hai', msg.join(' ') || 'Sound aur vibration chal rahe hain.');
+    else toast('Test', msg.join(' '));
+  }
+}
+
+/* ---------- Notifications ---------- */
+function notifSupported(){ return 'Notification' in window; }
+
+function notifHelpHTML(){
+  if(!notifSupported())
+    return ['warn','Is browser mein system notifications supported nahi hain. In-app alert, sound aur vibration phir bhi chalenge jab app khuli ho.'];
+  const p = Notification.permission;
+  if(p === 'granted')
+    return ['ok','System notifications allowed hain. Dhyan rakhein: ye tab aati hain jab app khuli ya background mein chal rahi ho. Android app mein reminders app band hone par bhi alarm ki tarah bajte hain.'];
+  if(p === 'denied')
+    return ['warn','Notification permission block hai. Chrome ke menu mein Site settings → Notifications → Allow karo, phir page reload karo. Tab tak in-app alert, sound aur vibration chalenge.'];
+  return ['warn','Abhi permission nahi mili. "Allow Notifications" dabao. Note: file se khole gaye page par kuch browsers notification block kar dete hain.'];
+}
+
+async function requestNotifPermission(){
+  if(!notifSupported()){ toast('Supported nahi','Is browser mein notifications available nahi hain.'); renderSettings(); return; }
+  try{
+    const r = await Notification.requestPermission();
+    if(r === 'granted') toast('Notifications ON ✅','Ab reminders system notification ke roop mein aayenge.');
+    else if(r === 'denied') toast('Permission denied','Aap baad mein browser ki Site settings se Allow kar sakte hain.');
+  }catch(e){ toast('Permission error', String(e && e.message || e)); }
+  renderSettings();
+}
+
+async function fireNotification(title, body, tag, forceNative){
+  // 1) In-app banner + sound + vibration (hamesha, jab app khuli ho)
+  toast(title, body, { sticky:true, actions:[{label:'Dismiss', sec:true}] });
+  playAlarmFeedback(false);
+  // 2) Android APK wrapper: native alarm already notification bhejta hai, isliye duplicate nahi (sirf test par force)
+  try{
+    const A = window.Android;
+    if(A && typeof A.showNotification === 'function' && (forceNative || typeof A.scheduleReminders !== 'function')) A.showNotification(title, body);
+    if(A) return;                      // wrapper mein web Notification API ki zaroorat nahi
+  }catch(e){}
+  // 3) Browser system notification
+  if(!notifSupported() || Notification.permission !== 'granted') return;
+  const opts = { body, tag, icon:ICON, badge:ICON, vibrate:[200,100,200], silent:false };
+  try{
+    const reg = navigator.serviceWorker && navigator.serviceWorker.getRegistration ? await navigator.serviceWorker.getRegistration() : null;
+    if(reg){ await reg.showNotification(title, opts); return; }
+  }catch(e){}
+  try{ new Notification(title, opts); }catch(e){ /* Android Chrome bina service worker ke constructor allow nahi karta; in-app alert upar dikh chuka hai */ }
+}
+
+function testNotification(){
+  fireNotification('🔔 Milkman PRO Reminder', "Test: Today's milk entry is pending!", 'test_'+Date.now(), true);
+}
+
+/* ---------- Settings screen ---------- */
+function renderSettings(){
+  const $ = id => document.getElementById(id);
+  $('s-notif').checked = !!S.notif;
+  $('s-sound').checked = !!S.sound;
+  $('s-vib').checked = !!S.vib;
+  $('s-caption').checked = !!S.caption;
+  $('s-fallback').checked = !!S.fallback;
+  $('s-tone').value = S.tone;
+  $('s-vol').value = S.vol;
+  $('s-quality').value = S.quality;
+  const re = S.reminders.find(r => r.id === 'r_entry'), rp = S.reminders.find(r => r.id === 'r_pay'), rb = S.reminders.find(r => r.id === 'r_bill');
+  $('s-entry-time').value = re ? re.time : S.entryTime;
+  $('s-pay-time').value   = rp ? rp.time : S.payTime;
+  $('s-bill-time').value  = rb ? rb.time : S.billTime;
+  $('s-bill-day').value   = rb ? (rb.day || 1) : S.billDay;
+
+  const badge = $('perm-badge');
+  if(!notifSupported()){ badge.textContent = 'Not supported'; badge.className = 'badge bad'; }
+  else if(Notification.permission === 'granted'){ badge.textContent = 'Allowed'; badge.className = 'badge'; }
+  else if(Notification.permission === 'denied'){ badge.textContent = 'Blocked'; badge.className = 'badge bad'; }
+  else { badge.textContent = 'Not asked'; badge.className = 'badge off'; }
+  const h = notifHelpHTML(), box = $('notif-help');
+  box.className = h[0] === 'ok' ? 'ok-box' : 'warn-box'; box.textContent = h[1]; box.style.display = 'block';
+
+  $('share-support').textContent = canShareFiles()
+    ? '✅ Is device par image file share supported hai. "WhatsApp Image Share" dabane par share menu khulega, wahan WhatsApp chuno.'
+    : '⚠️ Is browser mein image file share supported nahi. Bill JPG download ho jayega, phir WhatsApp mein attach karke bhejo.';
+
+  const kb = Math.round(((localStorage.getItem('milk_v6') || '').length) / 1024);
+  $('data-info').textContent = `Customers: ${db.customers.length} | Entry months: ${Object.keys(db.entry).length} | Payments: ${db.payments.length} | History bills: ${db.gallery.length} | Storage used: ~${kb} KB`;
+}
+
+function saveSettingsFromUI(){
+  const $ = id => document.getElementById(id);
+  S.notif = $('s-notif').checked;  S.sound = $('s-sound').checked;  S.vib = $('s-vib').checked;
+  S.caption = $('s-caption').checked;  S.fallback = $('s-fallback').checked;
+  S.tone = $('s-tone').value;  S.vol = parseFloat($('s-vol').value) || .8;  S.quality = $('s-quality').value;
+  const sync = (id, time, day) => { const r = S.reminders.find(x => x.id === id); if(r){ if(time) r.time = time; if(day) r.day = day; } };
+  const et = $('s-entry-time').value, pt = $('s-pay-time').value, bt = $('s-bill-time').value;
+  let bd = parseInt($('s-bill-day').value, 10); if(!(bd >= 1 && bd <= 31)) bd = 1;
+  if(et){ S.entryTime = et; sync('r_entry', et); }
+  if(pt){ S.payTime = pt;   sync('r_pay', pt); }
+  if(bt){ S.billTime = bt;  sync('r_bill', bt, bd); } else sync('r_bill', null, bd);
+  S.billDay = bd;
+  saveSettings(); syncNative();
+  if(S.notif && notifSupported() && Notification.permission === 'default')
+    toast('Permission chahiye', '"Allow Notifications" dabao taaki system notification mil sake.');
+}
+
+/* =====================================================================
+   v2 PART B: Reminder engine (app khuli ho ya background mein ho tab tak)
+   ===================================================================== */
+function nameOf(i){ return db.customers[i] ? db.customers[i].name : ''; }
+
+function entryDoneToday(i, now){
+  const e = db.entry[i+'_'+ym(now)];
+  const v = e && e[now.getDate()];
+  return !!(v && ((v.c !== '' && v.c != null) || (v.b !== '' && v.b != null)));
+}
+function pendingEntryNames(now, only){
+  const out = [];
+  db.customers.forEach((c,i) => { if((!only || c.name === only) && !entryDoneToday(i, now)) out.push(c.name); });
+  return out;
+}
+function pendingDues(only){
+  const m = {};
+  db.payments.forEach(p => { m[p.cust] = (m[p.cust] || 0) + (parseFloat(p.due) || 0) - (parseFloat(p.adv) || 0); });
+  return Object.keys(m).map(k => ({ name: nameOf(k), amt: m[k] })).filter(x => x.name && x.amt > 0 && (!only || x.name === only));
+}
+function listNames(arr, n){ n = n || 4; return arr.slice(0,n).join(', ') + (arr.length > n ? ' (+' + (arr.length - n) + ' more)' : ''); }
+
+function buildReminder(r, lateMin, sched, forceTest){
+  const now = new Date(), title = '🔔 Milkman PRO Reminder';
+  const late = lateMin > 2 ? ' (missed at ' + r.time + ')' : '';
+  if(r.type === 'entry'){
+    const p = pendingEntryNames(now, r.cust);
+    if(!p.length){ return forceTest ? { title, body:"Aaj ki milk entry poori hai ✅" } : null; }
+    return { title, body: "Today's milk entry is pending! " + listNames(p) + late };
+  }
+  if(r.type === 'payment'){
+    const d = pendingDues(r.cust);
+    if(!d.length){ return forceTest ? { title, body:'Koi pending payment nahi hai ✅' } : null; }
+    const total = d.reduce((a,x) => a + x.amt, 0);
+    return { title, body: 'Pending payments: ' + listNames(d.map(x => x.name + ' ₹' + Math.round(x.amt))) + ' | Total ₹' + Math.round(total) + late };
+  }
+  if(r.type === 'bill'){
+    const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1), key = ym(pm);
+    let names = db.customers.filter((c,i) => (!r.cust || c.name === r.cust) && db.entry[i+'_'+key] && Object.keys(db.entry[i+'_'+key]).length).map(c => c.name);
+    if(!names.length) names = db.customers.filter(c => !r.cust || c.name === r.cust).map(c => c.name);
+    if(!names.length){ return forceTest ? { title, body:'Bill reminder: pehle customer add karo.' } : null; }
+    return { title, body: 'Bill reminder: ' + key + ' ke bills banane ka time. ' + listNames(names) + late };
+  }
+  const who = r.cust ? ' | Customer: ' + r.cust : '';
+  return { title, body: (r.label || 'Reminder') + who + late };
+}
+
+function dueInfo(r, now){
+  const hm = (r.time || '').split(':'); if(hm.length < 2) return null;
+  const sched = new Date(now.getFullYear(), now.getMonth(), now.getDate(), +hm[0], +hm[1], 0);
+  if(r.type === 'bill'){ if(now.getDate() !== Math.min(r.day || 1, dim(now.getFullYear(), now.getMonth()))) return null; }
+  if(r.type === 'custom' && r.repeat === 'once' && r.date !== ymd(now)) return null;
+  if(now < sched) return null;
+  return { sched, late: Math.round((now - sched) / 60000), key: r.id + '_' + ymd(now) };
+}
+
+function tick(){
+  if(!S.notif) return;
+  const now = new Date();
+  try{                                   // dusre tab mein pehle hi fire ho chuka ho to dobara nahi
+    const st = JSON.parse(localStorage.getItem(SET_KEY) || '{}').fired || {};
+    Object.keys(st).forEach(k => { if(!S.fired[k]) S.fired[k] = st[k]; });
+  }catch(e){}
+  let changed = false;
+  S.reminders.forEach(r => {
+    if(!r.enabled) return;
+    const d = dueInfo(r, now);
+    if(!d || S.fired[d.key]) return;
+    S.fired[d.key] = Date.now(); changed = true;
+    if(d.late > 720) return;               // 12 ghante se purana missed reminder chup-chaap skip
+    const msg = buildReminder(r, d.late, d.sched);
+    if(msg) fireNotification(msg.title, msg.body, d.key);
+    if(r.type === 'custom' && r.repeat === 'once') r.enabled = false;
+  });
+  const cutoff = Date.now() - 40*86400000;
+  Object.keys(S.fired).forEach(k => { if(S.fired[k] < cutoff){ delete S.fired[k]; changed = true; } });
+  if(changed){ saveSettings(); if(document.getElementById('alarms').classList.contains('active')) renderAlarms(); }
+}
+
+function nextFire(r, now){
+  const hm = (r.time || '').split(':'); if(hm.length < 2) return null;
+  for(let add = 0; add < 400; add++){
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + add, +hm[0], +hm[1], 0);
+    if(d <= now) continue;
+    if(r.type === 'bill' && d.getDate() !== Math.min(r.day || 1, dim(d.getFullYear(), d.getMonth()))) continue;
+    if(r.type === 'custom' && r.repeat === 'once' && r.date !== ymd(d)) continue;
+    return d;
+  }
+  return null;
+}
+function whenText(d, now){
+  const t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate()), b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((b - a) / 86400000);
+  if(diff === 0) return 'Aaj ' + t;
+  if(diff === 1) return 'Kal ' + t;
+  return d.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short' }) + ' ' + t;
+}
+const TYPE_ICON = { entry:'📝', payment:'💰', bill:'🧾', custom:'🔔' };
+
+/* ---------- Alarms screen ---------- */
+function renderAlarms(){
+  const now = new Date();
+  const up = document.getElementById('upcoming-list');
+  const list = S.reminders.filter(r => r.enabled).map(r => ({ r, d: nextFire(r, now) })).filter(x => x.d).sort((a,b) => a.d - b.d).slice(0, 8);
+  let h = S.notif ? '' : '<div class="warn-box">Notifications OFF hain (Settings mein ON karo), isliye reminders nahi bajenge.</div>';
+  h += list.length ? list.map(x => `<div class="up-item"><span>${TYPE_ICON[x.r.type]} ${esc(x.r.label)}${x.r.cust ? ' – ' + esc(x.r.cust) : ''}</span><b>${esc(whenText(x.d, now))}</b></div>`).join('')
+                   : '<p class="hint">Koi upcoming reminder nahi hai. Neeche se add karo.</p>';
+  up.innerHTML = h;
+
+  document.getElementById('rem-list').innerHTML = S.reminders.length ? S.reminders.map((r,i) => `
+    <div class="rem-item">
+      <div class="info"><b>${TYPE_ICON[r.type]} ${esc(r.label)}</b>
+        <small>${r.type === 'bill' ? 'Har mahine ' + (r.day || 1) + ' tarikh' : (r.type === 'custom' && r.repeat === 'once' ? esc(r.date || '') : 'Roz')}${r.cust ? ' | ' + esc(r.cust) : ''}</small></div>
+      <input type="time" value="${esc(r.time)}" style="width:128px;min-width:0;margin:0;padding:8px" onchange="setRemTime(${i}, this.value)">
+      <label class="switch"><input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="toggleRem(${i}, this.checked)"><span class="slider"></span></label>
+      <button class="icon-btn" title="Test" style="color:var(--primary)" onclick="testRem(${i})"><i class="fas fa-play"></i></button>
+      ${r.sys ? '' : `<button class="icon-btn" onclick="delRem(${i})"><i class="fas fa-trash"></i></button>`}
+    </div>`).join('') : '<p class="hint">Koi reminder nahi.</p>';
+
+  const sel = document.getElementById('ar-cust'), old = sel.value;
+  sel.innerHTML = '<option value="">Saare customers</option>' + db.customers.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+  if(old) sel.value = old;
+  arTypeChanged();
+}
+
+function arTypeChanged(){
+  const t = document.getElementById('ar-type').value, show = (id, on) => document.getElementById(id).style.display = on ? 'flex' : 'none';
+  show('ar-day-row', t === 'bill'); show('ar-rep-row', t === 'custom');
+  show('ar-date-row', t === 'custom' && document.getElementById('ar-rep').value === 'once');
+  show('ar-cust-row', true);
+}
+document.addEventListener('change', e => { if(e.target && e.target.id === 'ar-rep') arTypeChanged(); });
+
+function addReminder(){
+  const type = document.getElementById('ar-type').value;
+  const time = document.getElementById('ar-time').value;
+  if(!time){ toast('Time chuno', 'Reminder ka time zaroori hai.'); return; }
+  const names = { entry:'Daily milk entry', payment:'Pending payments', bill:'Monthly bill', custom:'Custom reminder' };
+  const r = { id:'r_' + Date.now(), type, time, enabled:true, label: document.getElementById('ar-label').value.trim() || names[type] };
+  const cust = document.getElementById('ar-cust').value; if(cust) r.cust = cust;
+  if(type === 'bill'){
+    const d = parseInt(document.getElementById('ar-day').value, 10);
+    if(!(d >= 1 && d <= 31)){ toast('Din galat hai', '1 se 31 ke beech din likho.'); return; }
+    r.day = d;
+  }
+  if(type === 'custom'){
+    r.repeat = document.getElementById('ar-rep').value;
+    if(r.repeat === 'once'){
+      r.date = document.getElementById('ar-date').value;
+      if(!r.date){ toast('Date chuno', 'Sirf ek baar wale reminder ke liye date zaroori hai.'); return; }
+    }
+  }
+  S.reminders.push(r);
+  if(saveSettings()){ syncNative(); document.getElementById('ar-label').value = ''; renderAlarms(); toast('Reminder add ho gaya ✅', r.label + ' – ' + r.time); }
+}
+function toggleRem(i, on){ S.reminders[i].enabled = on; saveSettings(); syncNative(); renderAlarms(); }
+function setRemTime(i, v){
+  if(!v) return;
+  S.reminders[i].time = v;
+  const id = S.reminders[i].id;                      // settings screen ke saath sync
+  if(id === 'r_entry') S.entryTime = v; if(id === 'r_pay') S.payTime = v; if(id === 'r_bill') S.billTime = v;
+  saveSettings(); syncNative(); renderAlarms();
+}
+function delRem(i){ if(confirm('Ye reminder delete karein?')){ S.reminders.splice(i,1); saveSettings(); syncNative(); renderAlarms(); } }
+function testRem(i){
+  const m = buildReminder(S.reminders[i], 0, null, true);
+  if(m) fireNotification(m.title, m.body, 'test_' + Date.now(), true);
+}
+
+/* ---------- Backup / Restore (naya phone ya APK app mein data le jaane ke liye) ---------- */
+function exportBackup(){
+  try{
+    const copy = JSON.parse(JSON.stringify(S)); copy.fired = {};
+    const payload = { app:'milkman-pro', version:1, saved:new Date().toISOString(), milk_v6: db, settings: copy };
+    const name = 'MilkmanPRO_Backup_' + ymd(new Date()) + '.json';
+    saveBlob(new Blob([JSON.stringify(payload)], { type:'application/json' }), name);
+    toast('Backup ban gaya ✅', name + ' (Downloads folder mein)', { ms:6000 });
+  }catch(e){ toast('Backup nahi ban saka', String(e && e.message || e)); }
+}
+
+function importBackup(input){
+  const f = input.files && input.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const p = JSON.parse(fr.result);
+      if(!p || p.app !== 'milkman-pro' || !p.milk_v6 || !Array.isArray(p.milk_v6.customers)) throw new Error('Ye Milkman PRO ka backup nahi hai');
+      const nc = p.milk_v6.customers.length, ng = (p.milk_v6.gallery || []).length;
+      if(!confirm('Backup mein ' + nc + ' customers aur ' + ng + ' bills hain.\nRestore karne par abhi ka data is backup se badal jayega (abhi ka data ek safe copy mein bhi rakha jayega). Aage badhein?')) return;
+      try{ localStorage.setItem('milk_v6_before_restore', localStorage.getItem('milk_v6') || '{}'); }catch(e){}
+      localStorage.setItem('milk_v6', JSON.stringify(p.milk_v6));
+      if(p.settings) localStorage.setItem(SET_KEY, JSON.stringify(p.settings));
+      alert('Data restore ho gaya ✅ App dobara load hogi.');
+      location.reload();
+    }catch(e){ toast('Restore nahi hua', String(e && e.message || e), { ms:7000 }); }
+    input.value = '';
+  };
+  fr.onerror = () => toast('File padh nahi paayi', 'Dobara try karo.');
+  fr.readAsText(f);
+}
+
+/* ---------- Android WebView wrapper hook (sirf tab chalega jab app APK wrapper mein ho) ---------- */
+function syncNative(noPrompt){
+  try{
+    if(window.Android && typeof window.Android.scheduleReminders === 'function')
+      window.Android.scheduleReminders(JSON.stringify(S.notif ? S.reminders.filter(r => r.enabled) : []));
+  }catch(e){}
+}
+
+/* ---------- Generic file save helper ---------- */
+function saveBlob(blob, filename){
+  try{
+    if(window.Android && typeof window.Android.saveFile === 'function'){
+      const fr = new FileReader();
+      fr.onload = () => { try{ window.Android.saveFile(String(fr.result).split(',')[1], filename, blob.type); }catch(e){} };
+      fr.readAsDataURL(blob); return;
+    }
+  }catch(e){}
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.style.display = 'none';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
+}
+
+/* =====================================================================
+   v2 PART C: Bill ko JPG banana, download karna, WhatsApp par asli image share karna
+   ===================================================================== */
+const QUALITY = { standard:{ scale:1.5, q:.82 }, high:{ scale:2, q:.92 }, max:{ scale:3, q:.97 } };
+
+function setBusy(on, txt){
+  document.getElementById('busy').style.display = on ? 'flex' : 'none';
+  if(txt) document.getElementById('busy-text').textContent = txt;
+}
+function safeName(s){ return String(s || 'Customer').trim().replace(/[^\wऀ-ॿ]+/g,'_').replace(/^_+|_+$/g,'') || 'Customer'; }
+function billFileName(){ return 'MilkBill_' + safeName(lastBill.name) + '_' + lastBill.month + '.jpg'; }
+function captionText(){
+  let t = 'Milk Bill\nCustomer: ' + lastBill.name + '\nMonth: ' + lastBill.month +
+         '\nCow: ' + lastBill.tc + ' L | Buffalo: ' + lastBill.tb + ' L\nTotal: ₹ ' + lastBill.total;
+  const s = billState();     // v3: payment status bhi bhejo
+  if(s && s.st !== 'none'){
+    t += '\nStatus: ' + ST_TXT[s.st];
+    if(s.recv > 0) t += '\nReceived: ₹ ' + s.recv.toFixed(2);
+    if(s.bal > 0) t += '\nBalance: ₹ ' + s.bal.toFixed(2);
+  }
+  return t;
+}
+function errText(e){
+  const m = String(e && e.message || e);
+  if(m === 'NOLIB') return 'Bill image library load nahi hui. Internet on karke page reload karo.';
+  return 'Bill image nahi ban paayi (' + m + '). Page reload karke dobara try karo.';
+}
+function canShareFiles(){
+  try{
+    if(!navigator.share || !navigator.canShare) return false;
+    const f = new File([new Blob(['x'], { type:'image/jpeg' })], 't.jpg', { type:'image/jpeg' });
+    return !!navigator.canShare({ files:[f] });
+  }catch(e){ return false; }
+}
+
+function renderBillBlob(){
+  return new Promise((resolve, reject) => {
+    if(typeof html2canvas === 'undefined'){ reject(new Error('NOLIB')); return; }
+    const q = QUALITY[S.quality] || QUALITY.high;
+    html2canvas(document.getElementById('bill-template'), { scale:q.scale, backgroundColor:'#ffffff', useCORS:true, logging:false })
+      .then(cv => cv.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', q.q))
+      .catch(reject);
+  });
+}
+
+function setJpgStatus(){
+  const el = document.getElementById('jpg-status'); if(!el || !lastBill) return;
+  if(lastBill.blob) el.textContent = '✅ JPG ready: ' + billFileName() + ' (' + Math.round(lastBill.blob.size / 1024) + ' KB)';
+  else if(lastBill.err) el.textContent = '⚠️ ' + errText(lastBill.err);
+  else el.textContent = '⏳ JPG ban rahi hai...';
+}
+
+// Preview banate hi image peeche se bana lete hain, taaki Share dabate hi turant khule (user-gesture bani rahe)
+function prepareBillImage(){
+  if(!lastBill) return Promise.resolve(null);
+  const lb = lastBill;
+  lb.blob = null; lb.err = null; lb.q = S.quality;
+  lb.imgPromise = renderBillBlob().then(b => { lb.blob = b; if(lb === lastBill) setJpgStatus(); return b; })
+                                  .catch(e => { lb.err = e; if(lb === lastBill) setJpgStatus(); return null; });
+  setJpgStatus();
+  return lb.imgPromise;
+}
+
+async function getBillBlob(){
+  if(!lastBill.imgPromise || lastBill.q !== S.quality) prepareBillImage();
+  const b = await lastBill.imgPromise;
+  if(!b) throw (lastBill.err || new Error('unknown'));
+  return b;
+}
+
+async function downloadBillJPG(){
+  if(!lastBill){ toast('Pehle preview banao', '"Create Preview" dabao, phir JPG download karo.'); return; }
+  setBusy(true, 'JPG ban rahi hai...');
+  try{
+    const b = await getBillBlob(), name = billFileName();
+    saveBlob(b, name);
+    toast('JPG download ho gayi ✅', name + ' (Downloads folder mein)', { ms:6000 });
+  }catch(e){ toast('JPG nahi ban saki', errText(e), { ms:7000 }); }
+  finally{ setBusy(false); }
+}
+
+async function shareBillImage(){
+  if(!lastBill){ toast('Pehle preview banao', '"Create Preview" dabao, phir WhatsApp par bhejo.'); return; }
+  let blob = (lastBill.blob && lastBill.q === S.quality) ? lastBill.blob : null;
+  if(!blob){
+    setBusy(true, 'JPG ban rahi hai...');
+    try{ blob = await getBillBlob(); }catch(e){ setBusy(false); toast('JPG nahi ban saki', errText(e), { ms:7000 }); return; }
+    setBusy(false);
+  }
+  const name = billFileName();
+
+  // A) Android WebView wrapper (agar app APK ke andar chal rahi ho)
+  try{
+    if(window.Android && typeof window.Android.shareImage === 'function'){
+      const fr = new FileReader();
+      fr.onload = () => { try{ window.Android.shareImage(String(fr.result).split(',')[1], name, S.caption ? captionText() : ''); }catch(e){ toast('Share error', String(e)); } };
+      fr.readAsDataURL(blob); return;
+    }
+  }catch(e){}
+
+  // B) Web Share API (Android Chrome): asli JPG file attachment ke roop mein
+  const file = new File([blob], name, { type:'image/jpeg', lastModified:Date.now() });
+  const tries = [];
+  if(S.caption) tries.push({ files:[file], title:'Milk Bill - ' + lastBill.name, text:captionText() });
+  tries.push({ files:[file], title:'Milk Bill - ' + lastBill.name });
+  for(const data of tries){
+    try{
+      if(!(navigator.share && navigator.canShare && navigator.canShare(data))) continue;
+      await navigator.share(data);
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError') return;                       // user ne share menu band kar diya
+      if(e && e.name === 'NotAllowedError'){ toast('Ek baar phir dabao', 'Ab image ready hai, button dobara dabane par share menu turant khulega.'); return; }
+    }
+  }
+
+  // C) Fallback: JPG download
+  if(S.fallback){
+    saveBlob(blob, name);
+    toast('Is device par seedha image share supported nahi', 'JPG download ho gayi. Ab WhatsApp kholo aur Downloads se "' + name + '" attach karke bhejo.', { sticky:true, actions:[{ label:'OK' }] });
+  }else{
+    toast('Image share supported nahi', 'Settings mein auto-download ON karo ya "Download JPG" dabao.', { ms:6000 });
+  }
+}
+
+/* =====================================================================
+   v3: Top menu + Profile + Login (login sirf is phone par save hota hai)
+   ===================================================================== */
+const AUTH_KEY = 'milk_auth_v1', KEEP_KEY = 'milk_auth_keep', SESS_KEY = 'milk_auth_sess';
+const SEC_QS = ['Aapke pehle school ka naam?', 'Aapki maa ka naam?', 'Aapke gaon / shahar ka naam?', 'Aapke pehle pet ya dost ka naam?'];
+let AUTH = null, lockTimer = null;
+const gid = id => document.getElementById(id);
+const gv = id => gid(id).value;
+
+/* ---------- menu ---------- */
+function toggleMenu(e){
+  if(e) e.stopPropagation();
+  const open = !gid('top-menu').classList.contains('open');
+  gid('top-menu').classList.toggle('open', open);
+  gid('menu-backdrop').classList.toggle('open', open);
+}
+function closeMenu(){
+  const m = gid('top-menu'), b = gid('menu-backdrop');
+  if(m) m.classList.remove('open');
+  if(b) b.classList.remove('open');
+}
+function menuGo(id){ closeMenu(); switchView(id); window.scrollTo(0, 0); }
+function menuLogout(){ closeMenu(); doLogout(); }
+
+/* ---------- storage / hashing ---------- */
+function loadAuth(){
+  try{ AUTH = JSON.parse(localStorage.getItem(AUTH_KEY)); }catch(e){ AUTH = null; }
+  if(!AUTH || !AUTH.hash || !AUTH.salt) AUTH = null;
+  return AUTH;
+}
+function saveAuth(){ try{ localStorage.setItem(AUTH_KEY, JSON.stringify(AUTH)); return true; }catch(e){ return false; } }
+function rndHex(n){
+  const a = new Uint8Array(n);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(a);
+  else for(let i = 0; i < n; i++) a[i] = Math.floor(Math.random() * 256);
+  return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function cyrb(str){
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for(let i = 0, ch; i < str.length; i++){ ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+async function hashStr(txt, salt){
+  if(window.crypto && crypto.subtle){
+    try{
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey('raw', enc.encode(txt), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt:enc.encode(salt), iterations:120000 }, key, 256);
+      return 'p:' + Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }catch(e){}
+  }
+  const d = salt + '|' + txt;
+  return 'x:' + cyrb(d) + cyrb(d.split('').reverse().join(''));
+}
+const normAns = a => String(a || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+/* ---------- session ---------- */
+function isLoggedIn(){
+  if(!AUTH || !AUTH.sid) return false;
+  try{ return sessionStorage.getItem(SESS_KEY) === AUTH.sid || localStorage.getItem(KEEP_KEY) === AUTH.sid; }catch(e){ return false; }
+}
+function startSession(remember){
+  AUTH.sid = rndHex(16); AUTH.remember = !!remember; saveAuth();
+  try{
+    sessionStorage.setItem(SESS_KEY, AUTH.sid);
+    if(remember) localStorage.setItem(KEEP_KEY, AUTH.sid); else localStorage.removeItem(KEEP_KEY);
+  }catch(e){}
+}
+function endSession(){
+  if(AUTH){ AUTH.sid = ''; saveAuth(); }
+  try{ sessionStorage.removeItem(SESS_KEY); localStorage.removeItem(KEEP_KEY); }catch(e){}
+}
+function setRemember(on){
+  if(!AUTH || !AUTH.sid) return;
+  AUTH.remember = !!on; saveAuth();
+  try{ if(on) localStorage.setItem(KEEP_KEY, AUTH.sid); else localStorage.removeItem(KEEP_KEY); }catch(e){}
+}
+
+/* ---------- login screen ---------- */
+function authErr(msg, good){ const e = gid('au-err'); e.textContent = msg || ''; e.className = 'auth-err' + (good ? ' ok' : ''); }
+function togglePw(id){ const el = gid(id); el.type = el.type === 'password' ? 'text' : 'password'; }
+function fillQs(id){ gid(id).innerHTML = SEC_QS.map((q, i) => '<option value="' + i + '">' + esc(q) + '</option>').join(''); }
+
+function showAuth(mode){
+  document.body.classList.add('locked');
+  closeMenu();
+  document.querySelectorAll('.auth-pane').forEach(p => { p.style.display = p.dataset.mode === mode ? 'block' : 'none'; });
+  authErr('');
+  const T = {
+    signup: ['Account banao', 'Pehli baar apna login banao. Ye sirf is phone par save hota hai.'],
+    login:  ['Login', AUTH ? 'Namaste, ' + AUTH.name + (AUTH.shop ? ' (' + AUTH.shop + ')' : '') : ''],
+    forgot: ['Password bhool gaye?', 'Security question ka jawab do aur naya password banao.'],
+    reset:  ['App reset', 'Sirf tab karo jab password aur jawab dono yaad na ho.'],
+    otp:    ['OTP verify karo', AUTH ? 'OTP ' + maskNum(AUTH.mobile) + ' par SMS se bheja jata hai.' : ''],
+    otpalt: ['Security question', 'OTP ki jagah apne security question ka jawab do.']
+  }[mode];
+  gid('au-title').textContent = T[0]; gid('au-sub').textContent = T[1];
+  if(mode === 'forgot' && AUTH) gid('fg-q').textContent = SEC_QS[AUTH.qi] || SEC_QS[0];
+  if(mode === 'otpalt' && AUTH) gid('oa-q').textContent = SEC_QS[AUTH.qi] || SEC_QS[0];
+  if(mode === 'login') showLockLeft();
+  window.scrollTo(0, 0);
+}
+
+function unlockApp(){
+  document.body.classList.remove('locked');
+  ['au-pw', 'fg-a', 'fg-pw', 'fg-pw2', 'rs-txt', 'otp-code', 'oa-a'].forEach(i => { const e = gid(i); if(e) e.value = ''; });
+  applyProfileToUI();
+  window.scrollTo(0, 0);
+}
+function applyProfileToUI(){
+  if(AUTH) gid('head-sub').textContent = AUTH.shop || ('Namaste, ' + AUTH.name);
+}
+
+function lockLeft(){ return Math.max(0, Math.ceil(((AUTH && AUTH.lockUntil) || 0) - Date.now()) / 1000); }
+function showLockLeft(){
+  clearInterval(lockTimer);
+  const upd = () => {
+    const n = Math.ceil(lockLeft());
+    if(n > 0) authErr('Bahut galat koshish. ' + n + ' second baad dobara try karo.');
+    else{ clearInterval(lockTimer); if(/second baad/.test(gid('au-err').textContent)) authErr(''); }
+  };
+  if(lockLeft() > 0){ upd(); lockTimer = setInterval(upd, 1000); }
+}
+function registerFail(){
+  AUTH.fails = (AUTH.fails || 0) + 1;
+  if(AUTH.fails >= 5) AUTH.lockUntil = Date.now() + Math.min(300, 30 * (AUTH.fails - 4)) * 1000;
+  saveAuth();
+}
+
+async function doSignup(){
+  const name = gv('su-name').trim(), mobile = gv('su-mobile').replace(/[\s-]/g, ''), shop = gv('su-shop').trim();
+  const pw = gv('su-pw'), pw2 = gv('su-pw2'), qi = parseInt(gv('su-q'), 10) || 0, ans = normAns(gv('su-a'));
+  if(name.length < 2) return authErr('Apna naam likho.');
+  if(!/^\+?\d{10,13}$/.test(mobile)) return authErr('Sahi mobile number likho (10 ank).');
+  if(pw.length < 4) return authErr('Password kam se kam 4 akshar ka rakho.');
+  if(pw !== pw2) return authErr('Dono password alag hain.');
+  if(ans.length < 2) return authErr('Security question ka jawab likho.');
+  authErr('Account ban raha hai...');
+  const salt = rndHex(16);
+  AUTH = { name, mobile, shop, salt, hash: await hashStr(pw, salt), qi, ans: await hashStr(ans, salt),
+           created: Date.now(), remember: true, sid: '', fails: 0, lockUntil: 0, otpOn: true };
+  if(!saveAuth()){ AUTH = null; return authErr('Save nahi hua. Phone ki storage check karo.'); }
+  startSession(true);
+  ['su-pw', 'su-pw2', 'su-a'].forEach(i => gid(i).value = '');
+  unlockApp();
+}
+
+async function doLogin(){
+  if(!AUTH) return showAuth('signup');
+  if(lockLeft() > 0) return showLockLeft();
+  const pw = gv('au-pw');
+  if(!pw) return authErr('Password likho.');
+  authErr('Check ho raha hai...');
+  const ok = (await hashStr(pw, AUTH.salt)) === AUTH.hash;
+  if(!ok){
+    registerFail();
+    if(lockLeft() > 0) return showLockLeft();
+    return authErr('Password galat hai. (' + Math.max(0, 5 - AUTH.fails) + ' koshish baaki)');
+  }
+  pendingKeep = gid('au-keep').checked;
+  if(otpRequired()) return startOtp();      // password sahi: ab OTP
+  finishLogin(pendingKeep);
+}
+
+/* ---------- OTP (SMS phone ki apni SIM se) ---------- */
+let OTP = null, otpTimer = null, smsPermCb = null, pendingKeep = true;
+const maskNum = n => 'XXXXXX' + String(n || '').replace(/\D/g, '').slice(-4);
+function smsAvailable(){ return !!(window.Android && typeof window.Android.sendSms === 'function'); }
+function otpRequired(){ return !!AUTH && AUTH.otpOn !== false && smsAvailable(); }
+
+function finishLogin(keep){
+  AUTH.fails = 0; AUTH.lockUntil = 0; saveAuth();
+  OTP = null; clearInterval(otpTimer);
+  startSession(keep);
+  unlockApp();
+}
+function genOtp(){
+  const a = new Uint32Array(1);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(a); else a[0] = Math.floor(Math.random() * 4294967295);
+  return String(100000 + (a[0] % 900000));
+}
+function otpCooldown(sec){
+  clearInterval(otpTimer);
+  let left = sec; const b = gid('otp-resend');
+  const upd = () => {
+    if(left > 0){ b.disabled = true; b.textContent = 'Dobara bhejo (' + left + 's)'; left--; }
+    else{ clearInterval(otpTimer); b.disabled = false; b.textContent = 'Dobara bhejo'; }
+  };
+  upd(); otpTimer = setInterval(upd, 1000);
+}
+async function startOtp(){
+  showAuth('otp');
+  gid('otp-code').value = '';
+  await sendOtp();
+}
+function resendOtp(){ sendOtp(); }
+async function sendOtp(){
+  if(lockLeft() > 0) return authErr('Thodi der baad try karo (' + Math.ceil(lockLeft()) + ' second).');
+  const go = async () => {
+    const code = genOtp(), reqId = 'otp' + Date.now();
+    OTP = { hash: await hashStr(code, AUTH.salt + 'otp'), exp: Date.now() + 5 * 60000, tries: 0, reqId: reqId };
+    otpCooldown(30);
+    authErr('OTP bheja ja raha hai...', true);
+    window.Android.sendSms(AUTH.mobile, 'Milkman PRO login OTP: ' + code + ' (5 min valid). Kisi ko mat batao.', reqId);
+  };
+  let has = false; try{ has = !!window.Android.hasSmsPermission(); }catch(e){}
+  if(has) return go();
+  smsPermCb = granted => { smsPermCb = null; if(granted) go(); else authErr('SMS permission nahi mili. "OTP nahi aaya?" se security question se login karo.'); };
+  authErr('SMS bhejne ki permission Allow karo.', true);
+  try{ window.Android.requestSmsPermission(); }catch(e){ smsPermCb = null; authErr('SMS yahan supported nahi. Security question se login karo.'); }
+}
+window.onSmsPermission = g => { if(smsPermCb) smsPermCb(!!g); };
+window.onSmsSent = (reqId, ok, code) => {
+  if(reqId === 'test'){
+    toast(ok ? 'Test SMS bhej diya ✅' : 'Test SMS nahi gaya',
+          ok ? 'Ab check karo ki ' + maskNum(AUTH && AUTH.mobile) + ' par SMS aaya ya nahi. Na aaye to alag number try karo.'
+             : 'SIM, permission aur balance check karo (code ' + code + ').', { ms: 8000 });
+    return;
+  }
+  if(!OTP || OTP.reqId !== reqId) return;
+  if(ok) authErr('OTP bhej diya gaya ✅ SMS aane mein 1 minute lag sakta hai.', true);
+  else authErr('SMS nahi ja paaya (code ' + code + '). SIM / balance / permission check karo, ya "OTP nahi aaya?" se security question se login karo.');
+};
+async function doVerifyOtp(){
+  if(lockLeft() > 0) return authErr('Thodi der baad try karo (' + Math.ceil(lockLeft()) + ' second).');
+  const c = gv('otp-code').replace(/\D/g, '');
+  if(!OTP) return authErr('Pehle OTP mangwao: "Dobara bhejo" dabao.');
+  if(Date.now() > OTP.exp){ OTP = null; return authErr('OTP expire ho gaya. "Dobara bhejo" dabao.'); }
+  if(c.length !== 6) return authErr('6 ank ka OTP likho.');
+  authErr('Check ho raha hai...', true);
+  if((await hashStr(c, AUTH.salt + 'otp')) !== OTP.hash){
+    OTP.tries++; registerFail();
+    if(OTP.tries >= 3){ OTP = null; return authErr('3 galat OTP. "Dobara bhejo" dabake naya OTP lo.'); }
+    return authErr(lockLeft() > 0 ? 'Bahut galat koshish. Thodi der baad try karo.' : 'OTP galat hai.');
+  }
+  finishLogin(pendingKeep);
+}
+async function doOtpAlt(){
+  if(lockLeft() > 0) return authErr('Thodi der baad try karo (' + Math.ceil(lockLeft()) + ' second).');
+  const a = normAns(gv('oa-a'));
+  if(!a) return authErr('Jawab likho.');
+  authErr('Check ho raha hai...', true);
+  if((await hashStr(a, AUTH.salt)) !== AUTH.ans){
+    registerFail();
+    return authErr(lockLeft() > 0 ? 'Bahut galat koshish. Thodi der baad try karo.' : 'Jawab galat hai.');
+  }
+  finishLogin(pendingKeep);
+}
+function cancelOtp(){ OTP = null; clearInterval(otpTimer); showAuth('login'); }
+
+function setOtpOn(on){
+  if(!AUTH) return;
+  if(!on && !confirm('Login OTP band karein? Phir sirf password se login hoga.')){ gid('pf-otp').checked = true; return; }
+  AUTH.otpOn = !!on; saveAuth();
+  if(on && !smsAvailable()) toast('OTP sirf Android app mein chalta hai', 'Browser mein SMS nahi ja sakta.');
+  renderProfile();
+}
+function testSms(){
+  if(!smsAvailable()){ toast('Sirf Android app mein', 'Browser mein SMS nahi ja sakta.'); return; }
+  const go = () => { toast('Test SMS bheja ja raha hai...', maskNum(AUTH.mobile)); window.Android.sendSms(AUTH.mobile, 'Milkman PRO test SMS. Ye mil gaya to OTP bhi aayega.', 'test'); };
+  let has = false; try{ has = !!window.Android.hasSmsPermission(); }catch(e){}
+  if(has) return go();
+  smsPermCb = g => { smsPermCb = null; if(g) go(); else toast('Permission nahi mili', 'SMS permission Allow karo.'); };
+  try{ window.Android.requestSmsPermission(); }catch(e){ smsPermCb = null; }
+}
+
+async function doRecover(){
+  if(!AUTH) return showAuth('signup');
+  if(lockLeft() > 0) return authErr('Thodi der baad try karo (' + Math.ceil(lockLeft()) + ' second).');
+  const a = normAns(gv('fg-a')), n1 = gv('fg-pw'), n2 = gv('fg-pw2');
+  if(!a) return authErr('Jawab likho.');
+  if(n1.length < 4) return authErr('Naya password kam se kam 4 akshar ka rakho.');
+  if(n1 !== n2) return authErr('Dono password alag hain.');
+  authErr('Check ho raha hai...');
+  if((await hashStr(a, AUTH.salt)) !== AUTH.ans){
+    registerFail();
+    return authErr(lockLeft() > 0 ? 'Bahut galat koshish. Thodi der baad try karo.' : 'Jawab galat hai.');
+  }
+  AUTH.hash = await hashStr(n1, AUTH.salt); AUTH.fails = 0; AUTH.lockUntil = 0;
+  startSession(true);
+  unlockApp();
+  toast('Naya password set ho gaya ✅', 'Ab se naye password se login karna.');
+}
+
+function doReset(){
+  if(gv('rs-txt').trim().toUpperCase() !== 'RESET') return authErr('Confirm ke liye RESET likho.');
+  try{
+    ['milk_v6', 'milk_settings_v2', 'milk_v6_before_restore', AUTH_KEY, KEEP_KEY].forEach(k => localStorage.removeItem(k));
+    sessionStorage.removeItem(SESS_KEY);
+  }catch(e){}
+  location.reload();
+}
+
+function doLogout(){
+  if(!confirm('Logout karein?')) return;
+  endSession();
+  switchView('dashboard');
+  gid('au-pw').value = '';
+  gid('au-keep').checked = !AUTH || AUTH.remember !== false;
+  showAuth('login');
+}
+
+/* ---------- profile screen ---------- */
+function renderProfile(){
+  if(!AUTH) return;
+  gid('pf-avatar').textContent = (AUTH.name || '?').trim().charAt(0).toUpperCase() || '?';
+  gid('pf-title').textContent = AUTH.name;
+  gid('pf-since').textContent = (AUTH.mobile || '') + '  |  Account: ' + new Date(AUTH.created || Date.now()).toLocaleDateString('en-GB');
+  if(document.activeElement !== gid('pf-name')) gid('pf-name').value = AUTH.name || '';
+  if(document.activeElement !== gid('pf-mobile')) gid('pf-mobile').value = AUTH.mobile || '';
+  if(document.activeElement !== gid('pf-shop')) gid('pf-shop').value = AUTH.shop || '';
+  gid('pq-q').value = String(AUTH.qi || 0);
+  gid('pf-otp').checked = AUTH.otpOn !== false;
+  gid('pf-otp-hint').textContent = (AUTH.otpOn !== false ? 'ON: ' : 'OFF: ') + 'OTP ' + (AUTH.mobile || '') + ' par jayega.' + (smsAvailable() ? '' : ' (Browser mein OTP skip hota hai.)');
+  try{ gid('pf-remember').checked = localStorage.getItem(KEEP_KEY) === AUTH.sid; }catch(e){}
+}
+function saveProfile(){
+  const name = gv('pf-name').trim(), mobile = gv('pf-mobile').replace(/[\s-]/g, ''), shop = gv('pf-shop').trim();
+  if(name.length < 2){ toast('Naam likho', 'Naam kam se kam 2 akshar ka ho.'); return; }
+  if(!/^\+?\d{10,13}$/.test(mobile)){ toast('Mobile number galat hai', '10 ank ka sahi number likho.'); return; }
+  AUTH.name = name; AUTH.mobile = mobile; AUTH.shop = shop;
+  if(!saveAuth()){ toast('Save nahi hua', 'Phone ki storage check karo.'); return; }
+  applyProfileToUI(); renderProfile();
+  toast('Profile save ho gaya ✅', name);
+}
+async function changePassword(){
+  const o = gv('pw-old'), n1 = gv('pw-new'), n2 = gv('pw-new2');
+  if(!o){ toast('Abhi ka password likho'); return; }
+  if(n1.length < 4){ toast('Naya password chhota hai', 'Kam se kam 4 akshar rakho.'); return; }
+  if(n1 !== n2){ toast('Dono naye password alag hain'); return; }
+  if((await hashStr(o, AUTH.salt)) !== AUTH.hash){ toast('Abhi ka password galat hai'); return; }
+  AUTH.hash = await hashStr(n1, AUTH.salt); saveAuth();
+  ['pw-old', 'pw-new', 'pw-new2'].forEach(i => gid(i).value = '');
+  toast('Password badal gaya ✅', 'Agli baar naye password se login karo.');
+}
+async function saveRecovery(){
+  const pw = gv('pq-pw'), a = normAns(gv('pq-a')), qi = parseInt(gv('pq-q'), 10) || 0;
+  if(!pw){ toast('Abhi ka password likho'); return; }
+  if(a.length < 2){ toast('Jawab likho'); return; }
+  if((await hashStr(pw, AUTH.salt)) !== AUTH.hash){ toast('Password galat hai'); return; }
+  AUTH.qi = qi; AUTH.ans = await hashStr(a, AUTH.salt); saveAuth();
+  gid('pq-pw').value = ''; gid('pq-a').value = '';
+  toast('Recovery save ho gayi ✅');
+}
+
+/* ---------- INIT ---------- */
+function updateStats(){
+  document.getElementById('stat-c').innerText = db.customers.length;
+  document.getElementById('stat-g').innerText = db.gallery.length;
+  document.getElementById('stat-p').innerText = db.payments.length;
+  document.getElementById('date-now').innerText = new Date().toDateString();
+  renderDash();
+}
+
+(function init(){
+  const now = new Date();
+  const m = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  ['e-month','b-month','p-month'].forEach(id => document.getElementById(id).value = m);
+  updateStats(); renderCusts(); populateSelects();
+  // PWA: service worker (sirf https/http par; file:// par apne aap skip)
+  try{ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {}); }catch(e){}
+  // v2: reminder engine
+  syncNative(true);
+  setInterval(tick, 20000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) tick(); });
+  window.addEventListener('focus', tick);
+  setTimeout(tick, 1500);
+})();
+/* ---------- LOGIN INIT ---------- */
+(function authInit(){
+  fillQs('su-q'); fillQs('pq-q');
+  loadAuth();
+  if(!AUTH) showAuth('signup');
+  else if(isLoggedIn()) unlockApp();
+  else showAuth('login');
+})();
+</script>
+
+<!-- =====================================================================
+   CLOUD SYNC (Firebase Realtime Database, REST) - alag block, purane code ko nahi chhedta.
+   Sync hota hai: customers, entry, payments. Nahi hota: gallery (bill images), reminders/settings.
+   ===================================================================== -->
+<script>
+(function(){
+  'use strict';
+  const CFG_KEY = 'milk_cloud_v1';
+  const RULES = '{\n  "rules": {\n    ".read": false,\n    ".write": false,\n    "shops": {\n      "$code": {\n        ".read": true,\n        ".write": true\n      }\n    }\n  }\n}';
+  const $ = id => document.getElementById(id);
+  let cfg = null, busy = false, asking = false, again = false, pushTimer = null;
+
+  function loadCfg(){ try{ const c = JSON.parse(localStorage.getItem(CFG_KEY)); if(c && c.url && c.code) return c; }catch(e){} return null; }
+  function saveCfg(){ try{ if(cfg) localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); else localStorage.removeItem(CFG_KEY); }catch(e){} }
+
+  function snapStr(){ return JSON.stringify({ customers: db.customers || [], entry: db.entry || {}, payments: db.payments || [] }); }
+  function isEmptySnap(){ return !(db.customers || []).length && !(db.payments || []).length && !Object.keys(db.entry || {}).length; }
+  function hash(s){ let h = 5381; for(let i = 0; i < s.length; i++){ h = (((h << 5) + h) + s.charCodeAt(i)) | 0; } return h + ':' + s.length; }
+  function cloudCount(snap){ try{ const d = JSON.parse(snap.data || '{}'); return (d.customers || []).length; }catch(e){ return 0; } }
+
+  function setStatus(msg){ const el = $('cs-status'); if(el) el.textContent = msg; }
+  function nowT(){ return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
+  function errText(e){
+    const m = String(e && e.message || e);
+    if(e && e.name === 'AbortError') return 'Internet slow hai ya Database URL galat hai';
+    if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Internet nahi mila ya Database URL galat hai';
+    return m;
+  }
+
+  async function call(c, path, opts){
+    opts = opts || {};
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
+    try{
+      const r = await fetch(c.url + '/shops/' + c.code + path + '.json' + (opts.q || ''), {
+        method: opts.method || 'GET',
+        headers: opts.body ? { 'Content-Type': 'application/json' } : undefined,
+        body: opts.body, signal: ctl.signal
+      });
+      if(!r.ok){
+        let m = 'Error ' + r.status;
+        if(r.status === 401 || r.status === 403) m += ' - Firebase mein Rules publish karo (Realtime Database > Rules)';
+        if(r.status === 404) m += ' - Database URL check karo';
+        throw new Error(m);
+      }
+      return r.status === 204 ? null : await r.json();
+    } finally { clearTimeout(t); }
+  }
+
+  function refreshUI(){
+    try{
+      updateStats(); renderCusts(); populateSelects();
+      const v = document.querySelector('.view.active'); if(v) switchView(v.id);
+    }catch(e){}
+  }
+
+  function applyCloud(snap){
+    let d;
+    try{ d = JSON.parse(snap.data || '{}'); }catch(e){ throw new Error('Cloud ka data kharab hai'); }
+    try{ localStorage.setItem('milk_v6_before_sync', snapStr()); }catch(e){}
+    db.customers = Array.isArray(d.customers) ? d.customers : [];
+    db.entry = (d.entry && typeof d.entry === 'object' && !Array.isArray(d.entry)) ? d.entry : {};
+    db.payments = Array.isArray(d.payments) ? d.payments : [];
+    localStorage.setItem('milk_v6', JSON.stringify(db));
+    cfg.rev = snap.rev; cfg.hash = hash(snapStr()); saveCfg();
+    refreshUI();
+  }
+
+  async function pullFull(){
+    const snap = await call(cfg, '');
+    if(snap && snap.data){ applyCloud(snap); return true; }
+    return false;
+  }
+
+  async function push(){
+    const s = snapStr();
+    const rev = Math.max(Date.now(), (cfg.rev || 0) + 1);
+    await call(cfg, '', { method:'PUT', q:'?print=silent', body: JSON.stringify({ rev: rev, data: s, dev: cfg.dev, at: new Date().toISOString() }) });
+    cfg.rev = rev; cfg.hash = hash(s); saveCfg();
+  }
+
+  async function syncNow(manual){
+    if(!cfg) return;
+    if(busy){ again = true; return; }
+    busy = true; let pulled = false;
+    if(manual) setStatus('⏳ Sync ho raha hai…');
+    try{
+      const cloudRev = await call(cfg, '/rev');
+      const dirty = hash(snapStr()) !== cfg.hash;
+      const empty = isEmptySnap();
+      if(!cloudRev){
+        if(!empty) await push();
+      }else if(cloudRev !== cfg.rev){
+        if(!dirty || empty){ pulled = await pullFull(); }
+        else if(!asking){
+          asking = true;
+          const useCloud = confirm('Dusre phone par bhi data badla hai aur is phone par bhi naye changes hain.\n\nOK = Cloud ka data lo (is phone ke naye changes hat jayenge, safe copy rahegi)\nCancel = Is phone ka data cloud par bhejo (cloud ka data badal jayega)');
+          asking = false;
+          if(useCloud) pulled = await pullFull(); else await push();
+        }
+      }else if(dirty){
+        // khaali phone cloud ka data kabhi khaali nahi karega
+        if(empty) pulled = await pullFull(); else await push();
+      }
+      setStatus('✅ Sync ho gaya (' + nowT() + ')');
+      if(pulled) toast('Cloud se data aa gaya ✅', 'Dusre phone ka naya data is phone par aa gaya.', { ms:4000 });
+    }catch(e){
+      setStatus('⚠️ Sync nahi hua: ' + errText(e));
+    }finally{
+      busy = false;
+      if(again){ again = false; schedulePush(); }
+    }
+  }
+
+  function schedulePush(){
+    if(!cfg) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(() => syncNow(false), 2000);
+  }
+
+  /* ---------- Settings card ---------- */
+  function csRender(){
+    const r = $('cs-rules'); if(r && !r.value) r.value = RULES;
+    if(cfg){
+      if($('cs-url') && !$('cs-url').value) $('cs-url').value = cfg.url;
+      if($('cs-code') && !$('cs-code').value) $('cs-code').value = cfg.code;
+      if(!busy && /band hai/.test($('cs-status').textContent)) setStatus('Sync chalu hai.');
+    }else{
+      setStatus('Sync band hai.');
+    }
+  }
+
+  window.csCopyRules = function(){
+    const ta = $('cs-rules'); let ok = false;
+    try{ ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); ok = document.execCommand('copy'); }catch(e){}
+    if(!ok && navigator.clipboard){ try{ navigator.clipboard.writeText(RULES); ok = true; }catch(e){} }
+    toast(ok ? 'Rules copy ho gaye ✅' : 'Copy nahi hua', ok ? 'Firebase > Rules tab mein paste karke Publish karo.' : 'Text ko dabakar select karke copy karo.');
+  };
+
+  window.csNewCode = function(){
+    const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', a = new Uint32Array(10);
+    if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(a);
+    else for(let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 4294967295);
+    $('cs-code').value = Array.from(a, n => A[n % A.length]).join('');
+    setStatus('Naya code ban gaya. Ab "Save + Sync" dabao.');
+  };
+
+  window.csConnect = async function(){
+    if(busy) return;
+    let url = ($('cs-url').value || '').trim().replace(/^(https:\/\/[^\/]+).*$/i, '$1');
+    const code = ($('cs-code').value || '').trim().toUpperCase();
+    if(!/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/i.test(url)){
+      return setStatus('⚠️ Database URL sahi nahi hai. Aisa hona chahiye: https://xxxx-default-rtdb.firebaseio.com');
+    }
+    if(!/^[A-Z0-9]{6,24}$/.test(code)){
+      return setStatus('⚠️ Code mein sirf A-Z aur 0-9 hone chahiye (kam se kam 6). "Naya code banao" dabao.');
+    }
+    busy = true;
+    const prev = cfg;
+    const c = { url: url, code: code, dev: (prev && prev.dev) || ('D' + Math.random().toString(36).slice(2, 8)), rev: 0, hash: '' };
+    try{
+      setStatus('⏳ Cloud se jud raha hai…');
+      const snap = await call(c, '');
+      cfg = c;
+      if(!snap || !snap.data){
+        if(isEmptySnap()){ cfg.hash = hash(snapStr()); saveCfg(); }
+        else await push();
+      }else if(isEmptySnap()){
+        applyCloud(snap);
+      }else{
+        const nc = cloudCount(snap);
+        if(confirm('Is code par cloud mein pehle se data hai (' + nc + ' customers).\n\nOK = Cloud ka data is phone par lo (is phone ka data hat jayega, safe copy rahegi)\nCancel = aage dusra option dikhega')){
+          applyCloud(snap);
+        }else if(confirm('Phir is phone ka data (' + db.customers.length + ' customers) cloud par bhej dein? Cloud ka purana data badal jayega.\n\nOK = Haan, bhej do\nCancel = Sync mat karo')){
+          await push();
+        }else{
+          cfg = prev; setStatus('Sync nahi kiya gaya.'); busy = false; return;
+        }
+      }
+      $('cs-url').value = url; $('cs-code').value = code;
+      setStatus('✅ Sync chalu ho gaya (' + nowT() + ')');
+      toast('Cloud Sync chalu ✅', 'Dusre phone par bhi yahi URL aur code daalo.', { ms:5000 });
+    }catch(e){
+      cfg = prev;
+      setStatus('⚠️ Sync nahi hua: ' + errText(e));
+    }finally{
+      busy = false;
+    }
+  };
+
+  window.csSyncNow = function(){
+    if(!cfg) return setStatus('Pehle URL aur code daalkar "Save + Sync" dabao.');
+    return syncNow(true);
+  };
+
+  window.csStop = function(){
+    if(!cfg) return setStatus('Sync pehle se band hai.');
+    if(!confirm('Sync band karein? Is phone ka data yahin rahega, bas cloud se judna band ho jayega.')) return;
+    cfg = null; saveCfg(); setStatus('Sync band hai.');
+  };
+
+  /* ---------- hooks (purane functions ko wrap karte hain, unki body nahi badalte) ---------- */
+  if(typeof window.saveDB === 'function'){
+    const _saveDB = window.saveDB;
+    window.saveDB = function(){ const r = _saveDB.apply(this, arguments); if(r !== false) schedulePush(); return r; };
+  }
+  if(typeof window.renderSettings === 'function'){
+    const _rs = window.renderSettings;
+    window.renderSettings = function(){ const r = _rs.apply(this, arguments); csRender(); return r; };
+  }
+
+  cfg = loadCfg();
+  csRender();
+  setInterval(() => { if(!document.hidden) syncNow(false); }, 45000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) syncNow(false); });
+  window.addEventListener('focus', () => syncNow(false));
+  window.addEventListener('online', () => syncNow(false));
+  setTimeout(() => syncNow(false), 2500);
+})();
+</script>
+</body>
+</html>
